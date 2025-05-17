@@ -16,6 +16,7 @@ const GenerateTriviaQuestionsInputSchema = z.object({
   numberOfQuestions: z.number().int().positive().describe('The number of trivia questions to generate.'),
   difficulty: z.string().optional().describe('Optional: The desired difficulty for all questions (e.g., "Easy", "Medium", "Hard"). If "Mixed" or not provided, a range of difficulties will be generated.'),
   category: z.string().optional().describe('Optional: The desired category for all questions (e.g., "Sports", "History"). If "General Knowledge" or not provided, questions will cover various topics.'),
+  sessionId: z.string().optional().describe('An optional unique identifier for the game session to help ensure question variety across multiple plays.'),
 });
 export type GenerateTriviaQuestionsInput = z.infer<typeof GenerateTriviaQuestionsInputSchema>;
 
@@ -34,6 +35,8 @@ const triviaQuestionsPrompt = ai.definePrompt({
   output: {schema: GenerateTriviaQuestionsOutputSchema},
   prompt: `You are a trivia question generator for a game show.
   Generate {{{numberOfQuestions}}} unique trivia questions.
+
+  It is CRITICAL that for each request (even with similar category or difficulty requests), you generate a FRESH and DISTINCT set of questions. Avoid repeating questions that might have been generated in previous requests. The game is played multiple times, so variety is key.
 
   {{#if category}}
   All questions should ideally be from the '{{category}}' category.
@@ -58,6 +61,7 @@ const triviaQuestionsPrompt = ai.definePrompt({
   Ensure the questions are engaging and suitable for a general audience.
   Avoid questions that are too niche, ambiguous, or require external knowledge beyond common understanding.
   The 'points' for each question will be assigned by the game logic later, so you don't need to include them in the output.
+  Session ID for this request (for your internal reference if needed, not for output): {{{sessionId}}}
   `,
 });
 
@@ -101,3 +105,4 @@ const generateTriviaQuestionsFlow = ai.defineFlow(
     return output;
   }
 );
+
