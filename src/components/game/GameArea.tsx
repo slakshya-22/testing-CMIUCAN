@@ -11,8 +11,9 @@ import { ScoreDisplay } from "./ScoreDisplay";
 import { LifelinePanel } from "./LifelinePanel";
 import { GameOverDialog } from "./GameOverDialog";
 import { Button } from "@/components/ui/button";
-import { Loader2, Play, RefreshCw, AlertTriangle } from "lucide-react"; 
+import { Loader2, Play, RefreshCw, AlertTriangle, Home } from "lucide-react"; 
 import { Card, CardContent } from "@/components/ui/card";
+import Link from "next/link"; // Import Link for the Home button
 
 export function GameArea() {
   const {
@@ -53,54 +54,46 @@ export function GameArea() {
       stopTimer();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameStatus, currentQuestion, isAnswerRevealed]); // Removed timer controls from deps as they are stable
+  }, [gameStatus, currentQuestion, isAnswerRevealed]); 
 
-  if (gameStatus === "idle") { 
+  // Automatically start the game if the status is idle when the component mounts or gameStatus changes to idle
+  useEffect(() => {
+    if (gameStatus === "idle") {
+      startGame();
+    }
+  }, [gameStatus, startGame]);
+
+
+  if (gameStatus === "idle" || gameStatus === "loading_questions") { 
     return (
-      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)] text-center p-4 sm:p-6 md:p-8">
-        <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-6 sm:mb-8 bg-clip-text text-transparent bg-gradient-to-r from-primary via-accent to-secondary">
-          Welcome to Cash Me If You Can!
-        </h1>
-        <p className="text-lg sm:text-xl text-muted-foreground mb-10 sm:mb-12 max-w-md md:max-w-lg">
-          Inspired by KBC, test your knowledge and win big. Are you ready to face the hot seat?
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)] p-4">
+        <Loader2 className="h-12 w-12 sm:h-16 sm:w-16 animate-spin text-primary" />
+        <p className="ml-4 text-xl sm:text-2xl text-muted-foreground mt-4">
+          {gameStatus === "idle" ? "Initializing Game..." : "Generating fresh questions with AI, please wait..."}
         </p>
-        <Button 
-          size="lg" 
-          onClick={startGame} 
-          className="animate-bounce shadow-lg hover:shadow-primary/50 text-lg sm:text-xl px-8 sm:px-10 py-4 sm:py-5"
-        >
-          <Play className="mr-2 h-6 w-6 sm:h-7 sm:w-7" /> Start Game
-        </Button>
-         <div className="mt-10 sm:mt-12" data-ai-hint="game show stage spotlight">
-          <img 
-            src="https://placehold.co/600x300.png" 
-            alt="Cash Me If You Can Game Stage" 
-            className="rounded-lg shadow-2xl border-2 border-primary/30 w-full max-w-lg md:max-w-xl lg:max-w-2xl"
-          />
-        </div>
+        {gameStatus === "loading_questions" && (
+          <p className="text-sm text-muted-foreground/70 mt-2">(This might take a few moments)</p>
+        )}
       </div>
     );
   }
   
-  if (gameStatus === "loading_questions") { 
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)] p-4">
-        <Loader2 className="h-12 w-12 sm:h-16 sm:w-16 animate-spin text-primary" />
-        <p className="ml-4 text-xl sm:text-2xl text-muted-foreground mt-4">Generating fresh questions with AI, please wait...</p>
-        <p className="text-sm text-muted-foreground/70 mt-2">(This might take a few moments)</p>
-      </div>
-    );
-  }
-
   if (!currentQuestion && (gameStatus === "playing" || gameStatus === "answered")) { 
      return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)] p-4">
         <AlertTriangle className="h-12 w-12 sm:h-16 sm:w-16 text-destructive" />
         <p className="ml-4 text-xl sm:text-2xl text-destructive-foreground mt-4">Error loading question.</p>
         <p className="text-muted-foreground mt-2">There was an issue fetching the next question.</p>
-        <Button onClick={startGame} className="mt-8 bg-primary hover:bg-primary/90">
-          <RefreshCw className="mr-2 h-5 w-5" /> Start New Game
-        </Button>
+        <div className="flex space-x-4 mt-8">
+            <Button onClick={startGame} className="bg-primary hover:bg-primary/90">
+                <RefreshCw className="mr-2 h-5 w-5" /> Try Again
+            </Button>
+            <Button variant="outline" asChild>
+                <Link href="/">
+                    <Home className="mr-2 h-5 w-5" /> Go Home
+                </Link>
+            </Button>
+        </div>
       </div>
     );
   }
@@ -123,7 +116,7 @@ export function GameArea() {
                 key={`${currentQuestion.id}-answer-${answer.text}-${index}`} 
                 answer={answer}
                 onClick={() => handleSelectAnswer(answer)}
-                isSelected={selectedAnswer?.text === answer.text && selectedAnswer?.isCorrect === answer.isCorrect} // More robust selection check
+                isSelected={selectedAnswer?.text === answer.text && selectedAnswer?.isCorrect === answer.isCorrect}
                 isCorrect={answer.isCorrect}
                 isRevealed={isAnswerRevealed}
                 disabled={isAnswerRevealed || gameStatus === "game_over" || gameStatus === "answered" || gameStatus === "loading_questions"}
@@ -154,7 +147,7 @@ export function GameArea() {
       <GameOverDialog
         isOpen={gameStatus === "game_over"}
         score={score}
-        onPlayAgain={startGame}
+        onPlayAgain={startGame} // This will restart the game on the current /play page
         onSaveScore={saveScore}
         gameName="Cash Me If You Can"
       />

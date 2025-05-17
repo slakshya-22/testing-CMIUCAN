@@ -16,7 +16,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Trophy, ListChecks, Medal } from "lucide-react"; // Medal for rank
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils"; // Added missing import
+import { cn } from "@/lib/utils"; 
 
 export default function LeaderboardPage() {
   const [scores, setScores] = useState<ScoreEntry[]>([]);
@@ -73,7 +73,7 @@ export default function LeaderboardPage() {
                 />
               </div>
               <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground text-base sm:text-lg">
-                <Link href="/">Play Now</Link>
+                <Link href="/play">Play Now</Link>
               </Button>
             </div>
           ) : (
@@ -118,5 +118,3 @@ export default function LeaderboardPage() {
     </div>
   );
 }
-
-    

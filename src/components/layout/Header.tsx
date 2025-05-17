@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { Gamepad2, Trophy, Brain } from "lucide-react"; // Brain for KBC style
+import { Trophy, Brain, Play } from "lucide-react"; // Added Play icon
 import { Button } from "@/components/ui/button";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -20,16 +20,17 @@ export function Header() {
           </span>
         </Link>
         <nav className="flex flex-1 items-center space-x-1 sm:space-x-2">
-          <Link href="/" passHref>
+          <Link href="/play" passHref>
             <Button
               variant="ghost"
               className={cn(
                 "text-sm sm:text-base font-medium px-3 sm:px-4 py-2",
-                pathname === "/"
+                pathname === "/play"
                   ? "text-primary hover:text-primary/90"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
+              <Play className="mr-1.5 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5" />
               Game
             </Button>
           </Link>
@@ -52,5 +53,3 @@ export function Header() {
     </header>
   );
 }
-
-    
