@@ -34,10 +34,13 @@ const triviaQuestionsPrompt = ai.definePrompt({
   name: 'generateTriviaQuestionsPrompt',
   input: {schema: GenerateTriviaQuestionsInputSchema},
   output: {schema: GenerateTriviaQuestionsOutputSchema}, 
+  config: { // Added config for temperature
+    temperature: 0.9, // Higher temperature for more diverse/creative outputs
+  },
   prompt: `You are a trivia question generator for a game show.
   Generate {{{numberOfQuestions}}} unique trivia questions.
 
-  It is CRITICAL that for each request (even with similar category or difficulty requests), you generate a FRESH and DISTINCT set of questions. Avoid repeating questions that might have been generated in previous requests. The game is played multiple times, so variety is key.
+  It is CRITICAL that for each request (even with similar category or difficulty requests), you generate a FRESH and DISTINCT set of questions. Avoid repeating questions that might have been generated in previous requests. The game is played multiple times, so variety is key. DO NOT REPEAT QUESTIONS. EACH GAME SESSION MUST HAVE NEW QUESTIONS.
 
   {{#if category}}
   All questions should ideally be from the '{{category}}' category.
@@ -77,7 +80,7 @@ const generateTriviaQuestionsFlow = ai.defineFlow(
     try {
       const result = await triviaQuestionsPrompt(input);
 
-      if (result.error) { // Check for Genkit-level error from the prompt execution
+      if (result.error) {
         console.error('[generateTriviaQuestionsFlow] Genkit prompt execution resulted in an error. Input:', JSON.stringify(input, null, 2), 'Genkit Error:', result.error);
         const errorMessage = result.error instanceof Error ? result.error.message : JSON.stringify(result.error);
         throw new Error(`AI prompt failed: ${errorMessage}`);
@@ -97,7 +100,6 @@ const generateTriviaQuestionsFlow = ai.defineFlow(
 
       if (rawAiOutputFromPrompt.questions.length === 0 && input.numberOfQuestions > 0) {
         console.warn('[generateTriviaQuestionsFlow] AI returned an empty list of questions despite being asked for some. Input:', JSON.stringify(input, null, 2), 'Raw Output:', JSON.stringify(rawAiOutputFromPrompt, null, 2));
-        // Allow this to proceed to validation; if no valid questions, it will be caught later.
       }
       
       const validatedQuestions = rawAiOutputFromPrompt.questions.map((q, index) => {
@@ -161,7 +163,6 @@ const generateTriviaQuestionsFlow = ai.defineFlow(
         }
       }
       
-      // Log the full error object for better server-side debugging
       console.error('[generateTriviaQuestionsFlow] FULL Error object caught:', error);
 
 
@@ -189,8 +190,7 @@ const generateTriviaQuestionsFlow = ai.defineFlow(
         errorMessage = 'A server error occurred while generating questions. Please check server logs for details.';
       }
       
-      throw new Error(errorMessage); // Re-throw a standard Error for Next.js to handle
+      throw new Error(errorMessage);
     }
   }
 );
-

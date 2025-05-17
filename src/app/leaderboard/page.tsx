@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { ScoreEntry, FirestoreScoreEntry } from "@/lib/types"; // Added FirestoreScoreEntry
+import type { ScoreEntry, FirestoreScoreEntry } from "@/lib/types";
 import {
   Table,
   TableBody,
@@ -16,7 +16,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Trophy, Loader2, Medal } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils"; 
+import { cn } from "@/lib/utils";
 import { firestore } from "@/lib/firebase/config";
 import { collection, query, orderBy, limit, getDocs, Timestamp } from "firebase/firestore";
 
@@ -36,20 +36,23 @@ export default function LeaderboardPage() {
       setError(null);
       try {
         const scoresCollection = collection(firestore, "leaderboard_scores");
+        // Firestore requires a composite index for this query:
+        // Collection: leaderboard_scores
+        // Fields: score (descending), timestamp (ascending)
+        // You can usually create this by following the link provided in the Firestore error message in your console.
         const q = query(scoresCollection, orderBy("score", "desc"), orderBy("timestamp", "asc"), limit(10));
         
         const querySnapshot = await getDocs(q);
         const fetchedScores: ScoreEntry[] = [];
         querySnapshot.forEach((doc) => {
           const data = doc.data() as FirestoreScoreEntry;
-          // Convert Firestore Timestamp to a readable date string
           let dateStr = "N/A";
           if (data.timestamp && data.timestamp instanceof Timestamp) {
              dateStr = data.timestamp.toDate().toLocaleDateString();
           }
 
           fetchedScores.push({
-            id: doc.id, // userId is the document id
+            id: doc.id, 
             name: data.name,
             score: data.score,
             date: dateStr,
@@ -57,9 +60,13 @@ export default function LeaderboardPage() {
           });
         });
         setScores(fetchedScores);
-      } catch (e) {
+      } catch (e: any) {
         console.error("Failed to fetch scores from Firestore", e);
-        setError("Could not load high scores. Please try again later.");
+        if (e.code === 'failed-precondition' && e.message.includes('requires an index')) {
+          setError(`Database query failed: This query needs a composite index in Firestore. Please check the console logs for a link to create it, or create it manually in your Firebase console for the 'leaderboard_scores' collection (Fields: score DESC, timestamp ASC). Error: ${e.message}`);
+        } else {
+          setError("Could not load high scores. Please try again later.");
+        }
         setScores([]);
       } finally {
         setIsLoading(false);
@@ -83,7 +90,7 @@ export default function LeaderboardPage() {
       <div className="flex flex-col justify-center items-center min-h-[calc(100vh-12rem)] p-4 text-center">
         <Trophy className="h-12 w-12 sm:h-16 sm:w-16 text-destructive mb-4" />
         <p className="text-xl sm:text-2xl text-destructive-foreground font-semibold">Error Loading Leaderboard</p>
-        <p className="text-muted-foreground mt-2 mb-6">{error}</p>
+        <p className="text-muted-foreground mt-2 mb-6 max-w-lg whitespace-pre-wrap">{error}</p>
         <Button onClick={() => window.location.reload()} className="bg-primary hover:bg-primary/90">
             Try Again
         </Button>

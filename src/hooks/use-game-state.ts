@@ -2,12 +2,12 @@
 "use client";
 
 import { useState, useCallback, useEffect } from 'react';
-import type { Question, Answer as AnswerType, FirestoreScoreEntry } from '@/lib/types';
+import type { Question, Answer as AnswerType, FirestoreScoreEntry, AudiencePollResults } from '@/lib/types';
 import { KBC_POINTS } from '@/lib/game-data'; 
 import { useToast } from '@/hooks/use-toast';
 import { generateTriviaQuestions, type GenerateTriviaQuestionsInput } from '@/ai/flows/generate-trivia-questions-flow';
-import { firestore } from '@/lib/firebase/config'; // Firestore instance
-import { doc, getDoc, setDoc, serverTimestamp, Timestamp } from 'firebase/firestore'; // Firestore functions
+import { firestore } from '@/lib/firebase/config'; 
+import { doc, getDoc, setDoc, serverTimestamp, Timestamp } from 'firebase/firestore'; 
 import { useAuth } from '@/context/AuthContext';
 
 const INITIAL_TIMER_DURATION = 30; 
@@ -35,11 +35,11 @@ export function useGameState() {
   const [isPhoneAFriendUsed, setIsPhoneAFriendUsed] = useState(false);
   const [isFiftyFiftyUsed, setIsFiftyFiftyUsed] = useState(false);
   const [isAudiencePollUsed, setIsAudiencePollUsed] = useState(false);
-  const [audiencePollResults, setAudiencePollResults] = useState<Record<string, number> | null>(null);
+  const [audiencePollResults, setAudiencePollResults] = useState<AudiencePollResults | null>(null);
   const [displayedAnswers, setDisplayedAnswers] = useState<AnswerType[]>([]);
 
   const { toast } = useToast();
-  const { user } = useAuth(); // Get authenticated user
+  const { user } = useAuth();
 
   const currentQuestion = questions[currentQuestionIndex] || null;
 
@@ -47,7 +47,7 @@ export function useGameState() {
     setSelectedAnswer(null);
     setIsAnswerRevealed(false);
     setAudiencePollResults(null); 
-    setDisplayedAnswers([]); // Clear displayed answers before moving to next
+    setDisplayedAnswers([]); 
 
     if (currentQuestionIndex < questions.length - 1) {
       const nextQuestion = questions[currentQuestionIndex + 1];
@@ -112,9 +112,8 @@ export function useGameState() {
         category: category !== "General Knowledge" ? category : undefined,
         sessionId: `session_${Date.now()}_${Math.random().toString(36).substring(7)}`
       };
-      console.log('[useGameState] Generating questions with input:', input);
+      console.log('[useGameState] Generating questions with input:', JSON.stringify(input, null, 2));
       const aiResult = await generateTriviaQuestions(input);
-      console.log('[useGameState] AI Result:', aiResult);
       
       if (!aiResult || !aiResult.questions || aiResult.questions.length === 0) {
         throw new Error("AI failed to return any valid questions.");
@@ -174,7 +173,7 @@ export function useGameState() {
     setIsFiftyFiftyUsed(false);
     setIsAudiencePollUsed(false);
     setAudiencePollResults(null);
-    setQuestions([]); // Clear old questions
+    setQuestions([]); 
     setDisplayedAnswers([]);
     loadQuestions(mode, category);
   }, [loadQuestions]);
@@ -186,7 +185,6 @@ export function useGameState() {
         console.warn("[useGameState] Game is 'playing' but currentQuestion is null. This might indicate an issue with question indexing or an empty question set post-load.");
         setDisplayedAnswers([]);
     } else if (gameStatus !== "playing") {
-        // Clear displayed answers if not in playing state (e.g., game over, idle)
         setDisplayedAnswers([]); 
     }
   }, [currentQuestion, gameStatus, questions]);
@@ -242,7 +240,7 @@ export function useGameState() {
     let correctAnswerPercentage = 0;
 
     if (isCorrectAnswerDisplayed) {
-        correctAnswerPercentage = Math.floor(Math.random() * 31) + 40; // 40% to 70%
+        correctAnswerPercentage = Math.floor(Math.random() * 31) + 40; 
         results[correctAnswerText] = correctAnswerPercentage;
         totalPercentage -= correctAnswerPercentage;
     }
@@ -310,16 +308,9 @@ export function useGameState() {
             const existingData = docSnap.data() as FirestoreScoreEntry;
             if (score > existingData.score) {
                 message = "New high score saved!";
-            } else if (score === existingData.score) {
-                // If scores are equal, we could compare timestamps, but Firestore rules typically handle "write only if better"
-                // For simplicity, if score is same or lower, we won't update unless new timestamp logic for tie-break is desired on save.
-                // The query already handles tie-breaking on read by timestamp.
-                // Let's just update if score is strictly greater to avoid unnecessary writes.
-                 message = "Your score matches your previous high score.";
-                 shouldWrite = false; // Don't write if score isn't higher
             } else {
                 message = "Your score did not beat your previous high score.";
-                shouldWrite = false; // Don't write if score is lower
+                shouldWrite = false; 
             }
         }
 
@@ -328,9 +319,9 @@ export function useGameState() {
                 name: name,
                 score: score,
                 userId: userId,
-                timestamp: serverTimestamp() // Firestore will set the server time
+                timestamp: serverTimestamp() 
             };
-            await setDoc(scoreDocRef, scoreData); // This will create or overwrite
+            await setDoc(scoreDocRef, scoreData); 
              toast({
                 title: "Score Saved!",
                 description: message,
