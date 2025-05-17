@@ -308,7 +308,7 @@ export default function HomePage() {
               Your thoughts help us make the game even better!
             </p>
             <Button asChild variant="outline" className="mt-4 border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground text-lg px-8 py-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-105">
-              <Link href="mailto:feedback@example.com?subject=Feedback%20for%20Cash%20Me%20If%20You%20Can">
+              <Link href="mailto:slakshyamainacc@gmail.com?subject=Feedback%20for%20Cash%20Me%20If%20You%20Can">
                 Send Feedback
               </Link>
             </Button>
