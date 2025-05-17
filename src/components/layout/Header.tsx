@@ -2,20 +2,21 @@
 "use client";
 
 import Link from "next/link";
-import { Trophy, Brain, Play, Menu, LogIn, LogOut, UserCircle, Loader2 } from "lucide-react";
+import { Trophy, Brain, Play, Menu, LogIn, LogOut, UserCircle, Loader2, Home } from "lucide-react"; // Added Home icon
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetClose, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
-import { useAuth } from "@/context/AuthContext"; // Import useAuth
+import { useAuth } from "@/context/AuthContext";
 
 export function Header() {
   const pathname = usePathname();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
-  const { user, loading, signOut } = useAuth(); // Get auth state
+  const { user, loading, signOut } = useAuth();
 
   const navLinks = [
+    { href: "/", label: "Home", icon: Home }, // Added Home link
     { href: "/play", label: "Game", icon: Play },
     { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
   ];
@@ -54,7 +55,7 @@ export function Header() {
              </Button>
           ) : user ? (
             <>
-              <span className="text-sm text-muted-foreground hidden lg:inline-block">
+              <span className="text-sm text-muted-foreground hidden lg:inline-block ml-2 mr-1">
                 Hi, {user.displayName || user.email?.split('@')[0]}
               </span>
               <Button variant="outline" size="sm" onClick={signOut} className="border-primary text-primary hover:bg-primary/10 hover:text-primary-foreground">

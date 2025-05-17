@@ -11,10 +11,12 @@ import { ScoreDisplay } from "./ScoreDisplay";
 import { LifelinePanel } from "./LifelinePanel";
 import { GameOverDialog } from "./GameOverDialog";
 import { Button } from "@/components/ui/button";
-import { Loader2, RefreshCw, AlertTriangle, Home } from "lucide-react"; 
+import { Brain, RefreshCw, AlertTriangle, LogOut, Home as HomeIcon } from "lucide-react"; // Changed Loader2 to Brain, added LogOut and HomeIcon
 import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
-import { useAuth } from "@/context/AuthContext"; // Import useAuth
+// useAuth import removed as user is passed down or not directly needed here for quit
+import { useRouter } from "next/navigation";
+
 
 interface GameAreaProps {
   gameMode: string;
@@ -22,7 +24,7 @@ interface GameAreaProps {
 }
 
 export function GameArea({ gameMode, gameCategory }: GameAreaProps) {
-  const { user } = useAuth(); // Get user for passing to GameOverDialog
+  const router = useRouter();
   const {
     currentQuestion,
     currentQuestionIndex,
@@ -44,7 +46,7 @@ export function GameArea({ gameMode, gameCategory }: GameAreaProps) {
     audiencePollResults,
     displayedAnswers,
     saveScore,
-    timeTakenMs, // Get timeTakenMs
+    timeTakenMs,
   } = useGameState();
 
   const { timeLeft, startTimer, stopTimer, resetTimer, isRunning } = useTimer(
@@ -75,7 +77,7 @@ export function GameArea({ gameMode, gameCategory }: GameAreaProps) {
   if (gameStatus === "idle" || gameStatus === "loading_questions") { 
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)] p-4">
-        <Loader2 className="h-12 w-12 sm:h-16 sm:w-16 animate-spin text-primary" />
+        <Brain className="h-12 w-12 sm:h-16 sm:w-16 animate-pulse text-primary" /> {/* Changed Loader2 to Brain and added animate-pulse */}
         <p className="ml-4 text-xl sm:text-2xl text-muted-foreground mt-4">
           {gameStatus === "idle" ? "Initializing Game..." : "Generating fresh questions with AI, please wait..."}
         </p>
@@ -100,7 +102,7 @@ export function GameArea({ gameMode, gameCategory }: GameAreaProps) {
            </Button>
            <Button variant="outline" asChild>
                <Link href="/">
-                   <Home className="mr-2 h-5 w-5" /> Go Home
+                   <HomeIcon className="mr-2 h-5 w-5" /> Go Home
                </Link>
            </Button>
        </div>
@@ -109,11 +111,9 @@ export function GameArea({ gameMode, gameCategory }: GameAreaProps) {
  }
   
   if (!currentQuestion && (gameStatus === "playing" || gameStatus === "answered")) { 
-     // This case should ideally be less frequent if error_loading_questions is handled properly.
-     // It might indicate a brief period where questions are expected but not yet available.
      return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)] p-4 text-center">
-        <Loader2 className="h-12 w-12 sm:h-16 sm:w-16 animate-spin text-primary" />
+        <Brain className="h-12 w-12 sm:h-16 sm:w-16 animate-pulse text-primary" /> {/* Changed Loader2 to Brain and added animate-pulse */}
         <p className="ml-4 text-lg sm:text-xl text-muted-foreground mt-4">Loading question...</p>
       </div>
     );
@@ -163,12 +163,20 @@ export function GameArea({ gameMode, gameCategory }: GameAreaProps) {
             disabled={isAnswerRevealed || gameStatus === "game_over" || gameStatus === "answered" || gameStatus === "loading_questions" || gameStatus === "error_loading_questions"}
           />
         )}
+        <Button 
+          variant="outline" 
+          className="w-full border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive-foreground"
+          onClick={() => router.push('/')}
+          disabled={gameStatus === "loading_questions" || gameStatus === "error_loading_questions"}
+        >
+          <LogOut className="mr-2 h-5 w-5" /> Quit Game
+        </Button>
       </div>
 
       <GameOverDialog
         isOpen={gameStatus === "game_over"}
         score={score}
-        timeTakenMs={timeTakenMs} // Pass timeTakenMs
+        timeTakenMs={timeTakenMs}
         onPlayAgain={() => startGame(gameMode, gameCategory)}
         onSaveScore={saveScore}
         gameName="Cash Me If You Can"

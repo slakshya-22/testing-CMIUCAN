@@ -5,7 +5,7 @@ import { GameArea } from "@/components/game/GameArea";
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Suspense, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { Loader2 } from "lucide-react";
+import { Brain } from "lucide-react"; // Changed Loader2 to Brain
 
 function PlayPageContent() {
   const searchParams = useSearchParams();
@@ -26,7 +26,7 @@ function PlayPageContent() {
   if (loading || !user) {
     return (
       <div className="flex flex-col justify-center items-center min-h-[calc(100vh-12rem)] p-4">
-        <Loader2 className="h-12 w-12 sm:h-16 sm:w-16 animate-spin text-primary" />
+        <Brain className="h-12 w-12 sm:h-16 sm:w-16 animate-pulse text-primary" /> {/* Changed Loader2 to Brain and added animate-pulse */}
         <p className="ml-4 text-lg sm:text-xl text-muted-foreground mt-4">
           {loading ? "Authenticating..." : "Redirecting to sign in..."}
         </p>
@@ -41,7 +41,7 @@ export default function PlayPage() {
   return (
     <Suspense fallback={
       <div className="flex flex-col justify-center items-center min-h-[calc(100vh-12rem)] p-4">
-        <Loader2 className="h-12 w-12 sm:h-16 sm:w-16 animate-spin text-primary" />
+        <Brain className="h-12 w-12 sm:h-16 sm:w-16 animate-pulse text-primary" /> {/* Changed Loader2 to Brain and added animate-pulse */}
         <p className="ml-4 text-lg sm:text-xl text-muted-foreground mt-4">Loading game settings...</p>
       </div>
     }>
