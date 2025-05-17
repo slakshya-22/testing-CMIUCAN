@@ -5,9 +5,9 @@
 import type { User } from "firebase/auth";
 import { 
   onAuthStateChanged, 
-  signOut as firebaseSignOut, 
-  GoogleAuthProvider, 
-  signInWithPopup 
+  signOut as firebaseSignOut
+  // GoogleAuthProvider, // Removed
+  // signInWithPopup // Removed
 } from "firebase/auth";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { auth } from "@/lib/firebase/config";
@@ -18,7 +18,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   signOut: () => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
+  // signInWithGoogle: () => Promise<void>; // Removed
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -28,7 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const router = useRouter();
-  const searchParams = useSearchParams(); // Hook to get search params for redirect
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -47,33 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signInWithGoogle = async () => {
-    setLoading(true);
-    const provider = new GoogleAuthProvider();
-    try {
-      await signInWithPopup(auth, provider);
-      toast({
-        title: "Signed In Successfully!",
-        description: "Welcome!",
-      });
-      handleRedirect();
-    } catch (error: any) {
-      console.error("Google sign in error:", error);
-      let errorMessage = "Failed to sign in with Google. Please try again.";
-      if (error.code === "auth/popup-closed-by-user") {
-        errorMessage = "Sign-in popup closed. Please try again.";
-      } else if (error.code === "auth/account-exists-with-different-credential") {
-        errorMessage = "An account already exists with this email using a different sign-in method.";
-      }
-      toast({
-        title: "Google Sign-In Failed",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Removed signInWithGoogle function
 
   const signOut = async () => {
     try {
@@ -91,7 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signOut, signInWithGoogle }}>
+    <AuthContext.Provider value={{ user, loading, signOut /* Removed signInWithGoogle */ }}>
       {children}
     </AuthContext.Provider>
   );

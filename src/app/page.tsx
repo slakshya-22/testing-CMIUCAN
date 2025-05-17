@@ -4,7 +4,7 @@
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import Image from "next/image";
-import { PlayCircle, Brain, Settings, ChevronRight, Tv, Sparkles, HelpCircle, Mail, Gamepad2, Workflow, Layers, Rocket, Trophy, Smartphone, UserCircle, LogIn, Loader2 } from "lucide-react"; // Added Loader2
+import { PlayCircle, Brain, Settings, ChevronRight, Tv, Sparkles, HelpCircle, Mail, Gamepad2, Workflow, Layers, Rocket, Smartphone, UserCircle, LogIn, Loader2, Trophy } from "lucide-react";
 import { useState } from "react";
 import {
   Select,
@@ -21,8 +21,8 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { useAuth } from "@/context/AuthContext"; // Import useAuth
-import { useRouter } from "next/navigation"; // Import useRouter
+import { useAuth } from "@/context/AuthContext";
+import { useRouter } from "next/navigation";
 
 type GameMode = "Mixed" | "Easy" | "Medium" | "Hard";
 type GameCategory = "General Knowledge" | "Sports" | "History" | "Geography" | "Science";
@@ -30,8 +30,8 @@ type GameCategory = "General Knowledge" | "Sports" | "History" | "Geography" | "
 export default function HomePage() {
   const [selectedMode, setSelectedMode] = useState<GameMode>("Mixed");
   const [selectedCategory, setSelectedCategory] = useState<GameCategory>("General Knowledge");
-  const { user, loading } = useAuth(); // Get auth state
-  const router = useRouter(); // Get router instance
+  const { user, loading } = useAuth();
+  const router = useRouter();
 
   const gameModes: GameMode[] = ["Mixed", "Easy", "Medium", "Hard"];
   const gameCategories: GameCategory[] = [
@@ -72,21 +72,19 @@ export default function HomePage() {
 
   const handlePlayNowClick = () => {
     if (!user && !loading) {
-      router.push(`/auth/signin?redirect=/play?mode=${selectedMode}&category=${encodeURIComponent(selectedCategory)}`); // Redirect to sign-in if not logged in
+      router.push(`/auth/signin?redirect=/play?mode=${selectedMode}&category=${encodeURIComponent(selectedCategory)}`);
     } else if (user) {
       router.push(`/play?mode=${selectedMode}&category=${encodeURIComponent(selectedCategory)}`);
     }
-    // If loading, button is typically disabled or does nothing until loading completes
   };
   
   const handleConfigureAndPlayClick = () => {
     if (!user && !loading) {
-      router.push('/auth/signin?redirect=/'); // Redirect to sign-in if not logged in, then user can reconfigure
+      router.push('/auth/signin?redirect=/');
     } else {
-      window.scrollTo({ top: 0, behavior: 'smooth' }); // Scroll to top where settings are
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
-
 
   return (
     <div className="flex flex-col items-center text-center p-4 sm:p-6 md:p-8 space-y-16 sm:space-y-20 md:space-y-24">
@@ -105,12 +103,12 @@ export default function HomePage() {
           Step into the hot seat! Test your knowledge in this thrilling trivia game and climb the leaderboard.
         </p>
 
-        <Card className="w-full max-w-md mb-8 sm:mb-10 shadow-xl bg-card/80 backdrop-blur-md border-primary/20 rounded-xl">
+        <Card className="w-full max-w-md mb-8 sm:mb-10 shadow-2xl bg-card/80 backdrop-blur-md border-2 border-primary/30 rounded-xl">
           <CardHeader>
             <CardTitle className="text-2xl flex items-center justify-center text-primary">
               <Settings className="mr-2 h-6 w-6" /> Game Settings
             </CardTitle>
-            <CardDescription className="text-center">
+            <CardDescription className="text-center text-muted-foreground">
               Customize your trivia challenge!
             </CardDescription>
           </CardHeader>
@@ -181,7 +179,7 @@ export default function HomePage() {
 
       {/* About the Game Section */}
       <section className="w-full max-w-3xl lg:max-w-4xl px-2">
-        <Card className="shadow-xl bg-card/80 backdrop-blur-md border-primary/20 rounded-xl">
+        <Card className="shadow-2xl bg-card/80 backdrop-blur-md border-primary/30 rounded-xl">
           <CardHeader className="text-center">
             <div className="inline-block mx-auto p-3 bg-gradient-to-br from-primary via-accent to-secondary rounded-full mb-3 shadow-lg">
                 <Tv className="h-10 w-10 text-primary-foreground" />
@@ -212,7 +210,7 @@ export default function HomePage() {
 
       {/* How It Works Section */}
       <section className="w-full max-w-3xl lg:max-w-4xl px-2">
-        <Card className="shadow-xl bg-card/80 backdrop-blur-md border-secondary/20 rounded-xl">
+        <Card className="shadow-2xl bg-card/80 backdrop-blur-md border-secondary/30 rounded-xl">
           <CardHeader className="text-center">
             <div className="inline-block mx-auto p-3 bg-gradient-to-br from-secondary via-accent to-primary rounded-full mb-3 shadow-lg">
               <Workflow className="h-10 w-10 text-primary-foreground" />
@@ -220,80 +218,82 @@ export default function HomePage() {
             <CardTitle className="text-3xl font-bold text-secondary">How It Works</CardTitle>
           </CardHeader>
           <CardContent className="text-left text-muted-foreground text-lg space-y-6 px-6 sm:px-8 pb-8">
-            <div className="flex items-start space-x-4">
-              <div className="flex-shrink-0 w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold text-lg mt-1">1</div>
-              <div>
-                <h4 className="font-semibold text-xl text-primary mb-1">Sign Up / Sign In</h4>
-                <p>Create an account or sign in to track your progress and appear on the leaderboard.</p>
+            <div className="grid md:grid-cols-2 gap-8 items-center">
+              <div className="space-y-6">
+                {[
+                  { num: 1, title: "Sign Up / Sign In", description: "Create an account or sign in to track your progress and appear on the leaderboard." },
+                  { num: 2, title: "Customize Your Challenge", description: "Select your preferred game mode (difficulty) and category before you start. Or, go with \"Mixed\" for a diverse experience!" },
+                  { num: 3, title: "Answer & Ascend", description: "Tackle 15 questions, each more challenging and valuable than the last. Race against the clock to lock in your answers." },
+                  { num: 4, title: "Use Lifelines Wisely", description: "Feeling stuck? Utilize 50:50, Phone-A-Friend, or Audience Poll to gain an edge. But remember, each can only be used once!" },
+                  { num: 5, title: "Climb the Leaderboard", description: "After your game, save your score and see how you rank against other trivia masters. Aim for the top spot!" }
+                ].map(step => (
+                  <div key={step.num} className="flex items-start space-x-4">
+                    <div className="flex-shrink-0 w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold text-lg mt-1 shadow-md">{step.num}</div>
+                    <div>
+                      <h4 className="font-semibold text-xl text-primary mb-1">{step.title}</h4>
+                      <p>{step.description}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
-            <div className="flex items-start space-x-4">
-              <div className="flex-shrink-0 w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold text-lg mt-1">2</div>
-              <div>
-                <h4 className="font-semibold text-xl text-primary mb-1">Customize Your Challenge</h4>
-                <p>Select your preferred game mode (difficulty) and category before you start. Or, go with "Mixed" for a diverse experience!</p>
-              </div>
-            </div>
-            <div className="flex items-start space-x-4">
-              <div className="flex-shrink-0 w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold text-lg mt-1">3</div>
-              <div>
-                <h4 className="font-semibold text-xl text-primary mb-1">Answer & Ascend</h4>
-                <p>Tackle 15 questions, each more challenging and valuable than the last. Race against the clock to lock in your answers.</p>
-              </div>
-            </div>
-            <div className="flex items-start space-x-4">
-              <div className="flex-shrink-0 w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold text-lg mt-1">4</div>
-              <div>
-                <h4 className="font-semibold text-xl text-primary mb-1">Use Lifelines Wisely</h4>
-                <p>Feeling stuck? Utilize 50:50, Phone-A-Friend, or Audience Poll to gain an edge. But remember, each can only be used once!</p>
-              </div>
-            </div>
-            <div className="flex items-start space-x-4">
-              <div className="flex-shrink-0 w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold text-lg mt-1">5</div>
-              <div>
-                <h4 className="font-semibold text-xl text-primary mb-1">Climb the Leaderboard</h4>
-                <p>After your game, save your score and see how you rank against other trivia masters. Aim for the top spot!</p>
+              <div data-ai-hint="flowchart diagram" className="hidden md:flex justify-center items-center">
+                <Image
+                  src="https://placehold.co/400x500.png"
+                  alt="Game Flow Diagram"
+                  width={400}
+                  height={500}
+                  className="rounded-lg shadow-xl border-2 border-secondary/20"
+                />
               </div>
             </div>
           </CardContent>
         </Card>
       </section>
 
-
       {/* Key Features Section */}
       <section className="w-full max-w-3xl lg:max-w-4xl px-2">
-        <Card className="shadow-xl bg-card/80 backdrop-blur-md border-accent/20 rounded-xl">
+        <Card className="shadow-2xl bg-card/80 backdrop-blur-md border-accent/30 rounded-xl">
           <CardHeader className="text-center">
              <div className="inline-block mx-auto p-3 bg-gradient-to-br from-accent via-primary to-secondary rounded-full mb-3 shadow-lg">
                 <Sparkles className="h-10 w-10 text-accent-foreground" />
             </div>
             <CardTitle className="text-3xl font-bold text-accent">Why You'll Love It</CardTitle>
           </CardHeader>
-          <CardContent className="text-left text-muted-foreground text-lg grid md:grid-cols-2 gap-x-8 gap-y-6 px-6 sm:px-8 pb-8">
-            {[
-              { icon: Brain, title: "Dynamic AI Questions", description: "Enjoy a fresh set of challenges every time you play, thanks to our AI-powered question generation." },
-              { icon: Settings, title: "Customizable Gameplay", description: "Choose your preferred difficulty and category to tailor the game to your strengths." },
-              { icon: Gamepad2, title: "Engaging Lifelines", description: "Use 50:50, Phone-A-Friend, and Audience Poll to navigate tough questions." },
-              { icon: Layers, title: "Progressive Difficulty", description: "Questions get tougher as you advance, making each step more rewarding." },
-              { icon: Trophy, title: "Competitive Leaderboard", description: "Save your high scores and compete for the top spot against other players." },
-              { icon: Smartphone, title: "Sleek & Responsive", description: "Play seamlessly on any device, with a modern and intuitive interface." },
-            ].map(feature => (
-              <div key={feature.title} className="flex items-start space-x-3">
-                <feature.icon className="h-7 w-7 text-accent flex-shrink-0 mt-1" />
-                <div>
-                  <h4 className="font-semibold text-xl text-foreground mb-1">{feature.title}</h4>
-                  <p className="text-sm">{feature.description}</p>
+          <CardContent className="px-6 sm:px-8 pb-8">
+            <div className="grid md:grid-cols-2 gap-x-8 gap-y-6 text-left text-muted-foreground text-lg">
+              {[
+                { icon: Brain, title: "Dynamic AI Questions", description: "Enjoy a fresh set of challenges every time you play, thanks to our AI-powered question generation." },
+                { icon: Settings, title: "Customizable Gameplay", description: "Choose your preferred difficulty and category to tailor the game to your strengths." },
+                { icon: Gamepad2, title: "Engaging Lifelines", description: "Use 50:50, Phone-A-Friend, and Audience Poll to navigate tough questions." },
+                { icon: Layers, title: "Progressive Difficulty", description: "Questions get tougher as you advance, making each step more rewarding." },
+                { icon: Trophy, title: "Competitive Leaderboard", description: "Save your high scores and compete for the top spot against other players." },
+                { icon: Smartphone, title: "Sleek & Responsive", description: "Play seamlessly on any device, with a modern and intuitive interface." },
+              ].map(feature => (
+                <div key={feature.title} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-accent/10 transition-colors duration-200">
+                  <feature.icon className="h-7 w-7 text-accent flex-shrink-0 mt-1" />
+                  <div>
+                    <h4 className="font-semibold text-xl text-foreground mb-1">{feature.title}</h4>
+                    <p className="text-sm">{feature.description}</p>
+                  </div>
                 </div>
+              ))}
+            </div>
+             <div data-ai-hint="feature collage abstract" className="flex justify-center mt-8">
+                <Image
+                  src="https://placehold.co/600x350.png"
+                  alt="Game Features Collage"
+                  width={600}
+                  height={350}
+                  className="rounded-lg shadow-xl border-2 border-accent/20"
+                />
               </div>
-            ))}
           </CardContent>
         </Card>
       </section>
 
-
       {/* FAQs Section */}
       <section className="w-full max-w-3xl lg:max-w-4xl px-2">
-        <Card className="shadow-xl bg-card/80 backdrop-blur-md border-primary/20 rounded-xl">
+        <Card className="shadow-2xl bg-card/80 backdrop-blur-md border-primary/30 rounded-xl">
           <CardHeader className="text-center">
             <div className="inline-block mx-auto p-3 bg-gradient-to-br from-primary via-accent to-secondary rounded-full mb-3 shadow-lg">
                 <HelpCircle className="h-10 w-10 text-primary-foreground" />
@@ -303,11 +303,11 @@ export default function HomePage() {
           <CardContent className="px-6 sm:px-8 pb-8">
             <Accordion type="single" collapsible className="w-full">
               {faqItems.map(faq => (
-                <AccordionItem value={faq.value} key={faq.value}>
-                  <AccordionTrigger className="text-lg text-left hover:no-underline text-foreground data-[state=open]:text-primary">
+                <AccordionItem value={faq.value} key={faq.value} className="border-primary/20">
+                  <AccordionTrigger className="text-lg text-left hover:no-underline text-foreground data-[state=open]:text-primary data-[state=open]:font-semibold py-4">
                     {faq.question}
                   </AccordionTrigger>
-                  <AccordionContent className="text-base text-left text-muted-foreground">
+                  <AccordionContent className="text-base text-left text-muted-foreground pb-4">
                     {faq.answer}
                   </AccordionContent>
                 </AccordionItem>
@@ -319,21 +319,30 @@ export default function HomePage() {
 
       {/* Get In Touch Section */}
       <section className="w-full max-w-3xl lg:max-w-4xl px-2">
-        <Card className="shadow-xl bg-card/80 backdrop-blur-md border-secondary/20 rounded-xl">
+        <Card className="shadow-2xl bg-card/80 backdrop-blur-md border-secondary/30 rounded-xl">
           <CardHeader className="text-center">
             <div className="inline-block mx-auto p-3 bg-gradient-to-br from-secondary via-accent to-primary rounded-full mb-3 shadow-lg">
                 <Mail className="h-10 w-10 text-primary-foreground" />
             </div>
             <CardTitle className="text-3xl font-bold text-secondary">We'd Love to Hear From You!</CardTitle>
           </CardHeader>
-          <CardContent className="text-center text-muted-foreground text-lg space-y-4 px-6 pb-8">
+          <CardContent className="text-center text-muted-foreground text-lg space-y-6 px-6 pb-8">
             <p>
               Have feedback, suggestions, or just want to say hi? We're always looking to improve "Cash Me If You Can."
             </p>
+            <div data-ai-hint="contact support icons" className="flex justify-center my-6">
+                <Image
+                  src="https://placehold.co/400x250.png"
+                  alt="Contact or Feedback illustration"
+                  width={400}
+                  height={250}
+                  className="rounded-lg shadow-md border border-border"
+                />
+            </div>
             <p className="text-sm">
               (This is a placeholder. In a real app, you might find a contact form or email address here.)
             </p>
-            <Button variant="outline" className="mt-4 border-secondary text-secondary hover:bg-secondary/10">
+            <Button variant="outline" className="mt-4 border-secondary text-secondary hover:bg-secondary/10 hover:text-secondary-foreground text-lg px-6 py-3">
               Send Feedback (Coming Soon)
             </Button>
           </CardContent>
@@ -347,21 +356,24 @@ export default function HomePage() {
         <p className="text-lg sm:text-xl text-muted-foreground mb-8 max-w-md">
           The hot seat is waiting. Choose your settings above and start your journey to trivia stardom!
         </p>
+        <div data-ai-hint="rocket launch success" className="flex justify-center mb-8">
+            <Image
+              src="https://placehold.co/500x300.png"
+              alt="Rocket launching towards stars"
+              width={500}
+              height={300}
+              className="rounded-lg shadow-xl border-2 border-accent/20"
+            />
+        </div>
         <Button
           size="lg"
           className="shadow-lg hover:shadow-primary/50 text-lg sm:text-xl px-8 sm:px-10 py-4 sm:py-5 group bg-gradient-to-r from-primary via-accent to-secondary hover:opacity-90 text-primary-foreground"
           onClick={handleConfigureAndPlayClick}
-          disabled={loading && !user} // Disable if loading and no user (to prevent premature scroll)
+          disabled={loading && !user}
         >
             <PlayCircle className="mr-2 h-6 w-6 sm:h-7 sm:w-7" /> Configure & Play
         </Button>
       </section>
-
     </div>
   );
 }
-
-// Removed unused FeatureCard component
-    
-
-    

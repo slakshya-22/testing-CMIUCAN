@@ -8,7 +8,7 @@ import { getAuth, type Auth } from "firebase/auth";
 // Your web app's Firebase configuration as provided
 const firebaseConfig = {
   apiKey: "AIzaSyA1ro1aav-8QGVAJ0TAcKSnai5BRf-QZpE",
-  authDomain: "trivimaster-k8of6.firebaseapp.com",
+  authDomain: process.env.NODE_ENV === 'development' ? 'localhost' : window.location.hostname,
   projectId: "trivimaster-k8of6",
   storageBucket: "trivimaster-k8of6.firebasestorage.app", // Used as provided
   messagingSenderId: "489367812869",

@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { auth } from "@/lib/firebase/config";
 import { useAuth } from "@/context/AuthContext";
-import { Separator } from "@/components/ui/separator";
+// import { Separator } from "@/components/ui/separator"; // Google Sign-Up removed
 
 const signUpSchema = z.object({
   displayName: z.string().min(2, { message: "Name must be at least 2 characters." }).max(50, { message: "Name must be 50 characters or less."}),
@@ -28,21 +28,11 @@ const signUpSchema = z.object({
 
 type SignUpFormValues = z.infer<typeof signUpSchema>;
 
-// Inline Google SVG icon (same as signin page)
-const GoogleIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M17.6402 9.20455C17.6402 8.60455 17.582 8.00455 17.4729 7.42045H9V10.8068H13.942C13.7279 11.9705 13.0706 12.9545 12.082 13.6205V15.9205H14.792C16.5877 14.3068 17.6402 11.9773 17.6402 9.20455Z" fill="#4285F4"/>
-    <path d="M9.00004 17.9998C11.4352 17.9998 13.4682 17.193 14.7921 15.9202L12.0821 13.6202C11.2682 14.1589 10.2352 14.4884 9.00004 14.4884C6.88639 14.4884 5.08185 13.0361 4.37731 11.052L1.57049 13.3975V13.452C2.88185 16.0907 5.72276 17.9998 9.00004 17.9998Z" fill="#34A853"/>
-    <path d="M4.37727 11.0523C4.17273 10.4523 4.05000 9.81818 4.05000 9.17045C4.05000 8.52273 4.16364 7.88636 4.36818 7.29545V7.23636L1.57042 4.89199C0.981781 6.00451 0.627273 7.27273 0.627273 8.60227C0.627273 8.93182 0.627273 9.17045 0.627273 9.17045C0.627273 9.17045 0.627273 10.1932 1.57045 13.4523L4.37727 11.0523Z" fill="#FBBC05"/>
-    <path d="M9.00004 3.85205C10.3352 3.85205 11.5137 4.31341 12.4182 5.18159L14.8509 2.74864C13.4637 1.47705 11.4352 0.626953 9.00004 0.626953C5.72276 0.626953 2.88185 2.53614 1.57049 5.1725L4.36822 7.51801C5.07276 5.53409 6.88639 3.85205 9.00004 3.85205Z" fill="#EA4335"/>
-  </svg>
-);
-
 export default function SignUpPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
-  const { signInWithGoogle, loading: authLoading, user } = useAuth();
+  const { loading: authLoading, user } = useAuth(); // Removed signInWithGoogle
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -64,7 +54,6 @@ export default function SignUpPage() {
     }
   };
 
-  // Redirect if user is already logged in
   useEffect(() => {
     if (!authLoading && user) {
       handleRedirect();
@@ -101,11 +90,7 @@ export default function SignUpPage() {
     }
   };
 
-  const handleGoogleSignUp = async () => {
-    setIsSubmitting(true);
-    await signInWithGoogle(); // Same function as sign-in
-    setIsSubmitting(false);
-  };
+  // Removed handleGoogleSignUp
 
   const isLoading = isSubmitting || authLoading;
 
@@ -187,28 +172,7 @@ export default function SignUpPage() {
           </form>
         </Form>
 
-        <div className="px-6 pb-2">
-            <div className="relative my-3">
-                <div className="absolute inset-0 flex items-center">
-                    <Separator />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-card px-2 text-muted-foreground">
-                    Or continue with
-                    </span>
-                </div>
-            </div>
-
-            <Button 
-                variant="outline" 
-                className="w-full border-border hover:bg-muted/50" 
-                onClick={handleGoogleSignUp} 
-                disabled={isLoading}
-            >
-                {isLoading && authLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <GoogleIcon />}
-                Sign up with Google
-            </Button>
-        </div>
+        {/* Removed Google Sign Up Button and Separator */}
 
         <CardFooter className="flex flex-col space-y-2 pt-6">
             <p className="text-sm text-muted-foreground">
