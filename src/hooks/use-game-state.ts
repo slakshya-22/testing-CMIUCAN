@@ -7,7 +7,7 @@ import { KBC_POINTS } from '@/lib/game-data';
 import { useToast } from '@/hooks/use-toast';
 import { generateTriviaQuestions, type GenerateTriviaQuestionsInput } from '@/ai/flows/generate-trivia-questions-flow';
 
-const INITIAL_TIMER_DURATION = 30; // seconds
+const INITIAL_TIMER_DURATION = 30; 
 const TOTAL_QUESTIONS_IN_GAME = 15;
 
 export type GameStatus = "idle" | "loading_questions" | "playing" | "answered" | "game_over" | "error_loading_questions";
@@ -100,7 +100,7 @@ export function useGameState() {
 
   const loadQuestions = useCallback(async (mode?: string, category?: string) => {
     setGameStatus("loading_questions");
-    setQuestions([]); // Clear old questions
+    setQuestions([]); 
     try {
       const input: GenerateTriviaQuestionsInput = { 
         numberOfQuestions: TOTAL_QUESTIONS_IN_GAME,
@@ -132,16 +132,29 @@ export function useGameState() {
           });
         }
       } else {
-        // This case should ideally be caught by the `aiResult.questions.length === 0` check above.
         throw new Error("No questions were processed after AI generation.");
       }
     } catch (error: any) {
-      console.error("Failed to generate/load trivia questions:", error);
+      console.error("Failed to generate/load trivia questions (client-side catch):", error);
+      let displayErrorMessage = "Could not generate new trivia questions. Please try again.";
+      
+      if (error instanceof Error && error.message) {
+        displayErrorMessage = error.message;
+      } else if (typeof error === 'string') {
+        displayErrorMessage = error;
+      }
+
+      if (displayErrorMessage.includes("An error occurred in the Server Components render") || 
+          displayErrorMessage.includes("digest property is included on this error instance") ||
+          displayErrorMessage.toLowerCase().includes("failed to fetch")) { // Added check for generic fetch failure
+        displayErrorMessage = "The AI failed to generate questions due to a server error. Please check server logs for details and try again.";
+      }
+      
       toast({
         title: "Error Loading Questions",
-        description: error.message || "Could not generate new trivia questions. Please try again.",
+        description: displayErrorMessage,
         variant: "destructive",
-        duration: 7000, // Longer duration for error
+        duration: 10000, // Increased duration for error message
       });
       setQuestions([]); 
       setGameStatus("error_loading_questions"); 
@@ -165,11 +178,10 @@ export function useGameState() {
     if (currentQuestion) {
         setDisplayedAnswers(shuffleArray(currentQuestion.answers));
     } else if (gameStatus === "playing" && questions.length > 0 && !currentQuestion) {
-        // This case might happen if currentQuestionIndex is out of bounds after questions are set
-        // but usually, if questions are set, currentQuestion should also be set if index is 0.
-        // For safety, if game is 'playing' but currentQuestion is null, consider it an error.
-        console.warn("Game is playing but currentQuestion is null. This might indicate an issue.");
+        console.warn("[useGameState] Game is 'playing' but currentQuestion is null. This might indicate an issue with question indexing or an empty question set post-load.");
         // Potentially set to error state or re-evaluate.
+        // For now, ensure displayedAnswers is empty if no currentQuestion
+        setDisplayedAnswers([]);
     } else {
         setDisplayedAnswers([]); 
     }
@@ -212,21 +224,22 @@ export function useGameState() {
     if (!currentQuestion || isAudiencePollUsed) return;
 
     const results: AudiencePollResults = {};
-    const optionsForPoll = [...displayedAnswers];
-    const correctAnswerObject = currentQuestion.answers.find(a => a.isCorrect);
+    const optionsForPoll = [...displayedAnswers]; // Use current displayed answers for the poll
+    const correctAnswerInFullSet = currentQuestion.answers.find(a => a.isCorrect);
     
-    if (!correctAnswerObject) { 
+    if (!correctAnswerInFullSet) { 
         toast({ title: "Audience Poll Error", description: "Could not determine correct answer for poll.", variant: "destructive"});
         return;
     }
-    const correctAnswerText = correctAnswerObject.text;
+    const correctAnswerText = correctAnswerInFullSet.text;
 
     let totalPercentage = 100;
-    const correctAnswerPercentage = Math.floor(Math.random() * 31) + 40; // 40% to 70%
-    
-    const isCorrectAnswerInPollOptions = optionsForPoll.some(opt => opt.text === correctAnswerText);
+    // The correct answer (if present in current optionsForPoll) gets a higher chance
+    const isCorrectAnswerDisplayed = optionsForPoll.some(opt => opt.text === correctAnswerText);
+    let correctAnswerPercentage = 0;
 
-    if (isCorrectAnswerInPollOptions) {
+    if (isCorrectAnswerDisplayed) {
+        correctAnswerPercentage = Math.floor(Math.random() * 31) + 40; // 40% to 70% for the correct answer
         results[correctAnswerText] = correctAnswerPercentage;
         totalPercentage -= correctAnswerPercentage;
     }
@@ -237,31 +250,32 @@ export function useGameState() {
       if (index === otherOptions.length - 1) { 
         results[option.text] = totalPercentage > 0 ? totalPercentage : 0;
       } else {
-        const maxForThisOption = totalPercentage - (otherOptions.length - 1 - index); 
-        const randomPercentage = Math.floor(Math.random() * Math.max(0, maxForThisOption + 1)); // +1 to allow taking full remaining if only one other option left
+        // Ensure non-negative maxForThisOption
+        const maxForThisOption = Math.max(0, totalPercentage - (otherOptions.length - 1 - index)); 
+        const randomPercentage = Math.floor(Math.random() * (maxForThisOption + 1));
         const assignedPercentage = Math.min(randomPercentage, totalPercentage);
         results[option.text] = assignedPercentage;
         totalPercentage -= assignedPercentage;
       }
     });
     
+    // Ensure all displayed options have a percentage, even if 0
     optionsForPoll.forEach(opt => {
         if (!(opt.text in results)) {
-            results[opt.text] = 0; // Ensure all displayed options have a percentage
+            results[opt.text] = 0; 
         }
     });
 
-    // Normalize if sum is not 100
+    // Normalize if sum is not 100 due to rounding or if correct answer wasn't in displayed options initially
     let currentSum = Object.values(results).reduce((acc, val) => acc + val, 0);
     if (currentSum !== 100 && optionsForPoll.length > 0) {
-        const primaryOptionToAdjust = optionsForPoll.find(opt => opt.text === correctAnswerText && isCorrectAnswerInPollOptions) || optionsForPoll[0];
-        if (primaryOptionToAdjust && results[primaryOptionToAdjust.text] !== undefined) {
-             results[primaryOptionToAdjust.text] = Math.max(0, Math.min(100, results[primaryOptionToAdjust.text] + (100 - currentSum)));
+        const optionToAdjust = optionsForPoll.find(opt => opt.text === correctAnswerText && isCorrectAnswerDisplayed) || optionsForPoll[0];
+        if (optionToAdjust && results[optionToAdjust.text] !== undefined) {
+             results[optionToAdjust.text] = Math.max(0, Math.min(100, results[optionToAdjust.text] + (100 - currentSum)));
         }
     }
-    // Final check and force sum to 100 if still off (distribute remainder to the first option)
-    currentSum = Object.values(results).reduce((acc, val) => acc + val, 0);
-    if (currentSum !== 100 && optionsForPoll.length > 0) {
+    currentSum = Object.values(results).reduce((acc, val) => acc + val, 0); // Recalculate sum
+    if (currentSum !== 100 && optionsForPoll.length > 0) { // If still not 100, adjust first option
         const firstKey = optionsForPoll[0].text;
         if (results[firstKey] !== undefined) {
            results[firstKey] = Math.max(0, Math.min(100, results[firstKey] + (100 - currentSum)));
