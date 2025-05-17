@@ -1,7 +1,8 @@
+
 "use client";
 
 import Link from "next/link";
-import { Gamepad2, Trophy, HelpCircle } from "lucide-react"; // Added HelpCircle for potential future use
+import { Gamepad2, Trophy, Brain } from "lucide-react"; // Brain for KBC style
 import { Button } from "@/components/ui/button";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -10,23 +11,22 @@ export function Header() {
   const pathname = usePathname();
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-lg">
-      <div className="container flex h-16 max-w-screen-2xl items-center">
-        <Link href="/" className="mr-6 flex items-center space-x-2">
-          {/* Using a more KBC like icon, maybe a stylized Rupee symbol or a brain teaser icon later */}
-          <HelpCircle className="h-8 w-8 text-primary" />
-          <span className="font-bold text-2xl sm:inline-block bg-clip-text text-transparent bg-gradient-to-r from-primary via-accent to-primary">
+    <header className="sticky top-0 z-50 w-full border-b border-border/60 bg-background/90 backdrop-blur-lg supports-[backdrop-filter]:bg-background/70 shadow-lg">
+      <div className="container flex h-16 max-w-screen-2xl items-center px-4 sm:px-6 lg:px-8">
+        <Link href="/" className="mr-4 sm:mr-6 flex items-center space-x-2 group">
+          <Brain className="h-7 w-7 sm:h-8 sm:w-8 text-primary group-hover:text-accent transition-colors duration-300" />
+          <span className="font-bold text-xl sm:text-2xl bg-clip-text text-transparent bg-gradient-to-r from-primary via-accent to-primary group-hover:opacity-90 transition-opacity duration-300">
             Cash Me If You Can
           </span>
         </Link>
-        <nav className="flex flex-1 items-center space-x-2">
+        <nav className="flex flex-1 items-center space-x-1 sm:space-x-2">
           <Link href="/" passHref>
             <Button
               variant="ghost"
               className={cn(
-                "text-sm font-medium",
+                "text-sm sm:text-base font-medium px-3 sm:px-4 py-2",
                 pathname === "/"
-                  ? "text-primary"
+                  ? "text-primary hover:text-primary/90"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
@@ -37,13 +37,13 @@ export function Header() {
             <Button
               variant="ghost"
               className={cn(
-                "text-sm font-medium",
+                "text-sm sm:text-base font-medium px-3 sm:px-4 py-2",
                 pathname === "/leaderboard"
-                  ? "text-primary"
+                  ? "text-primary hover:text-primary/90"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
-              <Trophy className="mr-2 h-4 w-4" />
+              <Trophy className="mr-1.5 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5" />
               Leaderboard
             </Button>
           </Link>
@@ -52,3 +52,5 @@ export function Header() {
     </header>
   );
 }
+
+    

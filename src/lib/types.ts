@@ -1,4 +1,5 @@
-export type Difficulty = "Easy" | "Medium" | "Hard";
+
+export type Difficulty = "Easy" | "Medium" | "Hard" | "Very Hard"; // Added Very Hard
 
 export interface Answer {
   text: string;
@@ -11,6 +12,7 @@ export interface Question {
   answers: Answer[]; // Original full list of answers
   difficulty: Difficulty;
   points: number;
+  imageUrl?: string; // Optional for questions with images
 }
 
 export interface ScoreEntry {
@@ -21,3 +23,5 @@ export interface ScoreEntry {
 }
 
 export type AudiencePollResults = Record<string, number>; // e.g. { "Option A": 60, "Option B": 20, ... }
+
+    

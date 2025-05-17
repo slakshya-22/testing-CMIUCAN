@@ -1,74 +1,90 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 260 40% 10%; /* Dark Indigo/Violet */
-    --foreground: 0 0% 95%; /* Near White */
-    --card: 260 40% 15%; /* Slightly Lighter Dark Indigo */
-    --card-foreground: 0 0% 95%;
-    --popover: 260 40% 12%;
-    --popover-foreground: 0 0% 95%;
-    --primary: 45 100% 50%; /* Gold */
-    --primary-foreground: 260 30% 10%; /* Dark text on gold */
-    --secondary: 280 70% 60%; /* Bright Purple */
-    --secondary-foreground: 0 0% 98%;
-    --muted: 260 30% 25%;
-    --muted-foreground: 0 0% 70%; /* Lighter muted foreground for dark theme */
-    --accent: 50 100% 55%; /* Bright Yellow/Orange */
-    --accent-foreground: 260 30% 10%;
-    --destructive: 0 70% 55%; /* Slightly brighter red for dark theme */
-    --destructive-foreground: 0 0% 98%;
-    --success: 120 60% 45%; 
-    --success-foreground: 0 0% 98%;
-    --border: 260 30% 30%;
-    --input: 260 30% 25%;
-    --ring: 45 100% 55%; /* Gold for rings */
-    --radius: 0.5rem;
+    /* KBC Inspired Dark Theme - Vivid Purple, Electric Indigo, Soft Lavender (for text/highlights) */
+    /* Primary: Electric Indigo (#6F00FF) -> HSL(267, 100%, 50%) */
+    /* Secondary: Vivid Purple (#9400D3) -> HSL(282, 100%, 41%) */
+    /* Accent: Gold/Yellow for contrast */
+    /* Background: Deep Dark Purple/Indigo */
+    /* Foreground (Text): Soft Lavender inspired (very light, high contrast) */
 
+    --background: 270 50% 8%; /* Deep Dark Purple/Indigo */
+    --foreground: 240 40% 95%; /* Very Light Lavender/Off-White for text */
+    
+    --card: 270 50% 12%; /* Slightly Lighter Dark Purple/Indigo for cards */
+    --card-foreground: 240 40% 95%;
+    
+    --popover: 270 50% 10%; /* Darker for popovers */
+    --popover-foreground: 240 40% 95%;
+    
+    --primary: 267 100% 50%; /* Electric Indigo - Main interactive elements */
+    --primary-foreground: 240 60% 97%; /* Light text on Electric Indigo */
+    
+    --secondary: 282 100% 41%; /* Vivid Purple - Other accents, buttons */
+    --secondary-foreground: 240 60% 97%; /* Light text on Vivid Purple */
+    
+    --muted: 270 30% 25%; /* Muted Purple for less emphasis */
+    --muted-foreground: 240 30% 70%; /* Lighter muted text */
+    
+    --accent: 45 100% 55%; /* Gold/Bright Yellow for highlights, rings, lifelines */
+    --accent-foreground: 270 50% 10%; /* Dark text on Gold */
+    
+    --destructive: 0 70% 55%; /* Bright Red for errors/incorrect answers */
+    --destructive-foreground: 0 0% 98%;
+    
+    --success: 120 60% 45%;  /* Green for correct answers */
+    --success-foreground: 0 0% 98%;
+    
+    --border: 270 40% 25%; /* Subtle Purple border */
+    --input: 270 40% 20%; /* Darker input background */
+    --ring: 45 100% 55%; /* Gold for focus rings */
+    
+    --radius: 0.75rem; /* Slightly larger radius for a modern feel */
+
+    /* Chart colors can remain generic or be themed if charts are used extensively */
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
     
-    --sidebar-background: 260 30% 8%; 
-    --sidebar-foreground: 0 0% 90%;
-    --sidebar-primary: 45 100% 50%;
-    --sidebar-primary-foreground: 260 30% 10%;
-    --sidebar-accent: 260 30% 20%;
-    --sidebar-accent-foreground: 0 0% 90%;
-    --sidebar-border: 260 30% 25%;
-    --sidebar-ring: 45 100% 55%;
+    /* Sidebar specific (if used, can adopt main theme) */
+    --sidebar-background: 270 45% 6%; 
+    --sidebar-foreground: 240 35% 90%;
+    --sidebar-primary: var(--primary);
+    --sidebar-primary-foreground: var(--primary-foreground);
+    --sidebar-accent: 270 40% 20%;
+    --sidebar-accent-foreground: 240 35% 90%;
+    --sidebar-border: 270 40% 22%;
+    --sidebar-ring: var(--ring);
   }
 
-  /* Ensure dark theme variables are also set if .dark class is ever used, 
-     or simply make the root variables the default KBC dark theme as done above.
-     For simplicity, the root variables now define the KBC dark theme.
-     If a separate light theme is needed, it would go into a .light class or be default.
-  */
   .dark {
-    --background: 260 40% 10%;
-    --foreground: 0 0% 95%;
-    --card: 260 40% 15%;
-    --card-foreground: 0 0% 95%;
-    --popover: 260 40% 12%;
-    --popover-foreground: 0 0% 95%;
-    --primary: 45 100% 50%;
-    --primary-foreground: 260 30% 10%;
-    --secondary: 280 70% 60%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 260 30% 25%;
-    --muted-foreground: 0 0% 70%;
-    --accent: 50 100% 55%;
-    --accent-foreground: 260 30% 10%;
+    /* Ensure dark theme variables are the same as root for consistency */
+    --background: 270 50% 8%;
+    --foreground: 240 40% 95%;
+    --card: 270 50% 12%;
+    --card-foreground: 240 40% 95%;
+    --popover: 270 50% 10%;
+    --popover-foreground: 240 40% 95%;
+    --primary: 267 100% 50%;
+    --primary-foreground: 240 60% 97%;
+    --secondary: 282 100% 41%;
+    --secondary-foreground: 240 60% 97%;
+    --muted: 270 30% 25%;
+    --muted-foreground: 240 30% 70%;
+    --accent: 45 100% 55%;
+    --accent-foreground: 270 50% 10%;
     --destructive: 0 70% 55%;
     --destructive-foreground: 0 0% 98%;
     --success: 120 60% 45%;
     --success-foreground: 0 0% 98%;
-    --border: 260 30% 30%;
-    --input: 260 30% 25%;
+    --border: 270 40% 25%;
+    --input: 270 40% 20%;
     --ring: 45 100% 55%;
 
     --chart-1: 220 70% 50%;
@@ -77,14 +93,14 @@
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
 
-    --sidebar-background: 260 30% 8%;
-    --sidebar-foreground: 0 0% 90%;
-    --sidebar-primary: 45 100% 50%;
-    --sidebar-primary-foreground: 260 30% 10%;
-    --sidebar-accent: 260 30% 20%;
-    --sidebar-accent-foreground: 0 0% 90%;
-    --sidebar-border: 260 30% 25%;
-    --sidebar-ring: 45 100% 55%;
+    --sidebar-background: 270 45% 6%;
+    --sidebar-foreground: 240 35% 90%;
+    --sidebar-primary: var(--primary);
+    --sidebar-primary-foreground: var(--primary-foreground);
+    --sidebar-accent: 270 40% 20%;
+    --sidebar-accent-foreground: 240 35% 90%;
+    --sidebar-border: 270 40% 22%;
+    --sidebar-ring: var(--ring);
   }
 }
 
@@ -93,6 +109,8 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    /* Consider a subtle gradient for depth if desired */
+    /* background-image: radial-gradient(circle at top center, hsl(var(--background)) 0%, hsl(var(--background-end, var(--background))) 100%); */
   }
 }
