@@ -26,19 +26,26 @@ export function GameArea() {
     handleTimeUp,
     INITIAL_TIMER_DURATION,
     totalQuestions,
+    // Lifelines
     isPhoneAFriendUsed,
     usePhoneAFriend,
+    isFiftyFiftyUsed,
+    useFiftyFifty,
+    isAudiencePollUsed,
+    useAudiencePoll,
+    audiencePollResults,
+    displayedAnswers, // Use this instead of currentQuestion.answers directly for options
     saveScore,
   } = useGameState();
 
-  const { timeLeft, startTimer, stopTimer, resetTimer, isRunning, pauseTimer, resumeTimer } = useTimer(
+  const { timeLeft, startTimer, stopTimer, resetTimer, isRunning } = useTimer(
     INITIAL_TIMER_DURATION,
     handleTimeUp
   );
 
   useEffect(() => {
     if (gameStatus === "playing" && currentQuestion && !isRunning) {
-      resetTimer(); // Reset timer to full duration for new question
+      resetTimer();
       startTimer();
     } else if (gameStatus !== "playing" && isRunning) {
       stopTimer();
@@ -46,48 +53,26 @@ export function GameArea() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameStatus, currentQuestion, startTimer, stopTimer, resetTimer]);
 
-  useEffect(() => {
-    // Pause timer when phone a friend dialog is likely open (lifeline used and answer not revealed)
-    if (isPhoneAFriendUsed && gameStatus === "playing" && !isAnswerRevealed && isRunning) {
-        // This is a proxy. A better way would be to pass dialog state.
-        // For now, assume if PAF used and game is playing & timer running, dialog might be open.
-        // A more robust solution needs direct dialog state. This is a simplification.
-        // Let's assume the dialog is modal and game interaction is paused.
-        // However, the timer should pause.
-        // The PhoneAFriendDialog itself is modal, so user can't interact with game.
-        // We can pause timer when lifeline is activated.
-        // Actual dialog open state is in LifelinePanel, not easily accessible here without prop drilling or context.
-        // Simplified: When phone a friend is activated, we can assume it's open until next question.
-        // This effect will run when isPhoneAFriendUsed becomes true.
-        // We'll rely on user closing dialog to effectively "resume" game play.
-        // Let's add manual pause/resume to lifepanel or dialog itself, or pass pause/resume to it.
-        // For now, let's assume the PhoneAFriendDialog will handle pausing/resuming the timer via callbacks.
-        // This part is tricky without more complex state management.
-        // Simplified: Timer continues, AI advice is quick.
-    }
-  }, [isPhoneAFriendUsed, gameStatus, isAnswerRevealed, isRunning, pauseTimer, resumeTimer]);
-
-
-  if (gameStatus === "idle" || !currentQuestion) {
+  if (gameStatus === "idle") { // Can show a loading or initial screen
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-        <h1 className="text-5xl font-bold mb-8 bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">
-          Welcome to TriviMaster!
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-4">
+        <h1 className="text-5xl md:text-6xl font-bold mb-8 bg-clip-text text-transparent bg-gradient-to-r from-primary via-accent to-secondary">
+          Welcome to Cash Me If You Can!
         </h1>
         <p className="text-xl text-muted-foreground mb-12 max-w-md">
-          Test your knowledge and climb the leaderboard. Are you ready?
+          Inspired by KBC, test your knowledge and win big. Are you ready to face the hot seat?
         </p>
-        <Button size="lg" onClick={startGame} className="animate-bounce">
+        <Button size="lg" onClick={startGame} className="animate-bounce shadow-lg hover:shadow-primary/50">
           <Play className="mr-2 h-6 w-6" /> Start Game
         </Button>
-         <div className="mt-8" data-ai-hint="game show quiz">
-          <img src="https://placehold.co/600x300.png" alt="Trivia Game" className="rounded-lg shadow-xl"/>
+         <div className="mt-10" data-ai-hint="game show stage">
+          <img src="https://placehold.co/600x300.png" alt="Cash Me If You Can Game" className="rounded-lg shadow-2xl border-2 border-primary/30"/>
         </div>
       </div>
     );
   }
   
-  if (gameStatus === "loading_questions") { // hypothetical state if questions were fetched async
+  if (gameStatus === "loading_questions" || !currentQuestion) { 
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
@@ -104,15 +89,15 @@ export function GameArea() {
           questionNumber={currentQuestionIndex + 1}
           totalQuestions={totalQuestions}
         />
-        <Card className="shadow-lg">
+        <Card className="shadow-xl bg-card/80 backdrop-blur-sm border-primary/20">
           <CardContent className="p-6 space-y-3">
-            {currentQuestion.answers.map((answer, index) => (
+            {displayedAnswers.map((answer, index) => ( // Use displayedAnswers
               <AnswerOption
-                key={`${currentQuestion.id}-answer-${index}`}
+                key={`${currentQuestion.id}-answer-${index}-${answer.text}`} // more unique key
                 answer={answer}
                 onClick={() => handleSelectAnswer(answer)}
                 isSelected={selectedAnswer?.text === answer.text}
-                isCorrect={answer.isCorrect}
+                isCorrect={answer.isCorrect} // The original correctness is still needed
                 isRevealed={isAnswerRevealed}
                 disabled={isAnswerRevealed || gameStatus === "game_over"}
               />
@@ -128,6 +113,11 @@ export function GameArea() {
           currentQuestion={currentQuestion}
           isPhoneAFriendUsed={isPhoneAFriendUsed}
           onPhoneAFriendUsed={usePhoneAFriend}
+          isFiftyFiftyUsed={isFiftyFiftyUsed}
+          onFiftyFiftyUsed={useFiftyFifty}
+          isAudiencePollUsed={isAudiencePollUsed}
+          onAudiencePollUsed={useAudiencePoll}
+          audiencePollResults={audiencePollResults}
           disabled={isAnswerRevealed || gameStatus === "game_over"}
         />
       </div>
@@ -137,6 +127,7 @@ export function GameArea() {
         score={score}
         onPlayAgain={startGame}
         onSaveScore={saveScore}
+        gameName="Cash Me If You Can"
       />
     </div>
   );

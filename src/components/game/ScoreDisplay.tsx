@@ -1,6 +1,6 @@
 "use client";
 
-import { Award } from "lucide-react";
+import { Award, Star } from "lucide-react"; // Using Star for KBC-like feel
 
 interface ScoreDisplayProps {
   score: number;
@@ -8,12 +8,12 @@ interface ScoreDisplayProps {
 
 export function ScoreDisplay({ score }: ScoreDisplayProps) {
   return (
-    <div className="p-4 bg-card rounded-lg shadow-md flex items-center space-x-3">
-      <Award className="h-8 w-8 text-accent" />
-      <div>
-        <p className="text-sm text-muted-foreground">Score</p>
-        <p className="text-3xl font-bold text-foreground">{score}</p>
+    <div className="p-4 bg-card rounded-lg shadow-xl border border-primary/20 flex flex-col items-center space-y-2">
+      <div className="flex items-center text-primary">
+        <Star className="h-7 w-7 mr-2 fill-primary" />
+        <p className="text-lg font-medium">Current Score</p>
       </div>
+      <p className="text-5xl font-bold text-accent animate-pulse">{score}</p>
     </div>
   );
 }

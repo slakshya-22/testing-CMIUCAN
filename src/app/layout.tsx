@@ -9,8 +9,8 @@ import { Toaster } from "@/components/ui/toaster";
 // const geistMono = GeistMono; // Removed problematic const
 
 export const metadata: Metadata = {
-  title: "TriviMaster",
-  description: "The ultimate trivia game experience!",
+  title: "Cash Me If You Can",
+  description: "The ultimate KBC-style trivia game experience!",
 };
 
 export default function RootLayout({
@@ -21,7 +21,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`font-sans antialiased min-h-screen flex flex-col`} // Removed geistSans.variable and geistMono.variable
+        className={`font-sans antialiased min-h-screen flex flex-col bg-background text-foreground`} // Removed geistSans.variable and geistMono.variable
       >
         <Header />
         <main className="flex-grow container mx-auto px-4 py-8">

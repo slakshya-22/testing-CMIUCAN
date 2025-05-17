@@ -8,7 +8,7 @@ export interface Answer {
 export interface Question {
   id: string;
   text: string;
-  answers: Answer[];
+  answers: Answer[]; // Original full list of answers
   difficulty: Difficulty;
   points: number;
 }
@@ -19,3 +19,5 @@ export interface ScoreEntry {
   score: number;
   date: string;
 }
+
+export type AudiencePollResults = Record<string, number>; // e.g. { "Option A": 60, "Option B": 20, ... }
