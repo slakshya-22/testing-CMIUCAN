@@ -26,7 +26,7 @@ export type GenerateTriviaQuestionsInput = z.infer<typeof GenerateTriviaQuestion
 // Note: It doesn't include `points` as that's added client-side.
 // It also doesn't include `imageUrl` as we are not prompting for images.
 const AIQuestionOutputSchema = z.object({
-  id: z.string().describe("A unique identifier for the question (e.g., generated UUID or sequential)."),
+  id: z.string().describe("A unique identifier for the question (e.g., generated UUID or sequential, must be unique within THIS set of questions)."),
   text: z.string().min(1).describe("The text of the trivia question."),
   answers: z.array(AnswerSchema).length(4).describe("An array of exactly four answer options."),
   difficulty: DifficultyEnum.describe("The difficulty level of the question."),
@@ -53,10 +53,10 @@ const triviaQuestionsPrompt = ai.definePrompt({
   input: {schema: GenerateTriviaQuestionsInputSchema},
   output: {schema: GenerateTriviaQuestionsOutputSchema},
   config: {
-    temperature: 0.95,
+    temperature: 0.95, // Higher temperature for more varied, creative responses
   },
   prompt: `You are a trivia question generator for a game show.
-  Request Identifier: {{{requestIdentifier}}}
+  Request Identifier (for your internal reference): {{{requestIdentifier}}}
   Variation Hint for this specific request (use this to ensure a truly unique set of questions, do not include this hint in the questions themselves): {{{variationHint}}}
 
   Generate {{{numberOfQuestions}}} unique trivia questions.
@@ -72,16 +72,18 @@ const triviaQuestionsPrompt = ai.definePrompt({
   {{#if difficulty}}
   All questions should ideally be of '{{difficulty}}' difficulty.
   {{else}}
-  Ensure a good mix covering "Easy", "Medium", "Hard", and "Very Hard" difficulties. Try to make the questions progressively more difficult if possible.
+  Generate a diverse set of questions covering "Easy", "Medium", "Hard", and "Very Hard" difficulties.
+  It is especially important that the "Easy" questions in this mixed set are varied and fresh for each request. Ensure these easy questions cover different aspects of the category (if provided) or different general knowledge areas.
+  Try to make the overall set of questions progressively more difficult if possible.
   {{/if}}
 
   For each question, provide:
-  1. A unique 'id' (e.g., "q1", "q2", ... or a random string that is unique within this set of questions).
+  1. A unique 'id' (e.g., "q1", "q2", ... or a random string that is unique within THIS SET of questions). Ensure this ID is genuinely different for each question in the list you generate.
   2. The 'text' of the question.
   3. An array 'answers' containing exactly four objects, each with:
      - 'text': The answer option.
      - 'isCorrect': A boolean (true for the correct answer, false otherwise). Only one answer should be correct.
-  4. A 'difficulty' level chosen from: "Easy", "Medium", "Hard", "Very Hard". This should match the overall difficulty hint if one was provided.
+  4. A 'difficulty' level chosen from: "Easy", "Medium", "Hard", "Very Hard". This should align with the overall difficulty hint if one was provided, or contribute to the mix if "Mixed" difficulty was intended.
 
   Ensure the questions are engaging and suitable for a general audience.
   Avoid questions that are too niche, ambiguous, or require external knowledge beyond common understanding.
@@ -102,11 +104,18 @@ const generateTriviaQuestionsFlow = ai.defineFlow(
 
     try {
       promptResult = await triviaQuestionsPrompt(input);
-      aiOutput = promptResult.output; // output can be null if parsing failed or AI returned nothing matching schema
+      aiOutput = promptResult.output; // output can be null if Zod parsing by Genkit failed or AI returned nothing matching schema
 
       if (!aiOutput) {
-        console.error('[generateTriviaQuestionsFlow] AI prompt returned no structured output (output is null or undefined). Input:', JSON.stringify(input, null, 2), 'Full Genkit Result:', JSON.stringify(promptResult, null, 2));
-        throw new Error('AI prompt returned no structured output. The AI response might be malformed or empty.');
+        let errorDetails = "AI prompt returned no structured output. The AI response might be malformed, empty, or failed Zod parsing internally by Genkit.";
+        if (promptResult && (promptResult as any).candidates && (promptResult as any).candidates[0]?.finishReason) {
+            errorDetails += ` Finish Reason: ${(promptResult as any).candidates[0].finishReason}.`;
+            if((promptResult as any).candidates[0].finishMessage) {
+                errorDetails += ` Finish Message: ${(promptResult as any).candidates[0].finishMessage}.`;
+            }
+        }
+        console.error('[generateTriviaQuestionsFlow] AI prompt returned no structured output (output is null or undefined). Input:', JSON.stringify(input, null, 2), 'Full Genkit Result (if available):', JSON.stringify(promptResult, null, 2));
+        throw new Error(errorDetails);
       }
 
     } catch (e: any) {
@@ -137,6 +146,7 @@ const generateTriviaQuestionsFlow = ai.defineFlow(
     }
     
     const validatedQuestions: (Omit<Question, 'points' | 'imageUrl'>)[] = [];
+    const questionIdsInSet = new Set<string>(); // To ensure IDs are unique *within this generated set*
 
     for (const [index, qSource] of aiOutput.questions.entries()) {
       let currentQuestionForLog = `Question at index ${index}`;
@@ -144,8 +154,12 @@ const generateTriviaQuestionsFlow = ai.defineFlow(
         let questionId = qSource.id;
         if (!questionId || typeof questionId !== 'string' || questionId.trim() === "") {
            console.warn(`[Validation] ${currentQuestionForLog} has missing/invalid ID "${qSource.id}". Assigning fallback.`);
-           questionId = `gen_q_fallback_${index}_${Date.now()}`;
+           questionId = `gen_q_fallback_${index}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+        } else if (questionIdsInSet.has(questionId)) {
+           console.warn(`[Validation] ${currentQuestionForLog} has duplicate ID "${questionId}" within this set. Assigning fallback.`);
+           questionId = `gen_q_dup_fallback_${index}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
         }
+        questionIdsInSet.add(questionId);
         currentQuestionForLog = `Question (ID: ${questionId})`; // Update for subsequent logs
 
         if (!qSource.text || typeof qSource.text !== 'string' || qSource.text.trim() === "") {
@@ -201,5 +215,7 @@ const generateTriviaQuestionsFlow = ai.defineFlow(
     return { questions: validatedQuestions };
   }
 );
+
+    
 
     
