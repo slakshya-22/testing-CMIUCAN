@@ -13,34 +13,40 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trophy, ListChecks, Medal } from "lucide-react";
+import { Trophy, ListChecks, Medal, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils"; 
 
 export default function LeaderboardPage() {
   const [scores, setScores] = useState<ScoreEntry[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true); // Initialize to true
 
   useEffect(() => {
-    const storedScores = localStorage.getItem("cashMeIfYouCanHighScores");
-    if (storedScores) {
-      try {
-        const parsedScores = JSON.parse(storedScores) as ScoreEntry[];
-        parsedScores.sort((a, b) => b.score - a.score);
-        setScores(parsedScores.slice(0,10)); 
-      } catch (e) {
-        console.error("Failed to parse scores from localStorage", e);
-        localStorage.removeItem("cashMeIfYouCanHighScores"); 
+    // Ensure localStorage is only accessed on the client
+    if (typeof window !== 'undefined') {
+      const storedScores = localStorage.getItem("cashMeIfYouCanHighScores");
+      if (storedScores) {
+        try {
+          const parsedScores = JSON.parse(storedScores) as ScoreEntry[];
+          parsedScores.sort((a, b) => b.score - a.score);
+          setScores(parsedScores.slice(0,10)); 
+        } catch (e) {
+          console.error("Failed to parse scores from localStorage", e);
+          localStorage.removeItem("cashMeIfYouCanHighScores"); 
+          setScores([]); // Set to empty array on error
+        }
+      } else {
+        setScores([]); // Set to empty if no scores are stored
       }
+      setIsLoading(false);
     }
-    setIsLoading(false);
   }, []);
 
   if (isLoading) {
     return (
       <div className="flex flex-col justify-center items-center min-h-[calc(100vh-12rem)] p-4">
-        <ListChecks className="h-12 w-12 sm:h-16 sm:w-16 animate-pulse text-primary" />
+        <Loader2 className="h-12 w-12 sm:h-16 sm:w-16 animate-spin text-primary" />
         <p className="ml-4 text-lg sm:text-xl text-muted-foreground mt-4">Loading leaderboard...</p>
       </div>
     );

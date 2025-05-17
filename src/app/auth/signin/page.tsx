@@ -7,7 +7,7 @@ import { signInWithEmailAndPassword } from "firebase/auth";
 import { Eye, EyeOff, LogIn, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -31,7 +31,7 @@ export default function SignInPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
-  const { loading: authLoading, user } = useAuth(); // Removed signInWithGoogle
+  const { loading: authLoading, user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -43,21 +43,20 @@ export default function SignInPage() {
     },
   });
 
-  const handleRedirect = () => {
-    const redirectPath = searchParams.get("redirect");
+  const handleRedirect = useCallback(() => {
+    const redirectPath = searchParams?.get("redirect"); // Added optional chaining for safety
     if (redirectPath) {
       router.push(decodeURIComponent(redirectPath));
     } else {
       router.push("/");
     }
-  };
+  }, [router, searchParams]);
   
   useEffect(() => {
     if (!authLoading && user) {
       handleRedirect();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, authLoading, router]);
+  }, [user, authLoading, handleRedirect]);
 
 
   const onSubmit = async (data: SignInFormValues) => {
@@ -84,8 +83,6 @@ export default function SignInPage() {
       setIsSubmitting(false);
     }
   };
-
-  // Removed handleGoogleSignIn
   
   const isLoading = isSubmitting || authLoading;
 
@@ -154,13 +151,11 @@ export default function SignInPage() {
           </form>
         </Form>
         
-        {/* Removed Google Sign In Button and Separator */}
-
         <CardFooter className="flex flex-col space-y-2 pt-6">
             <p className="text-sm text-muted-foreground">
             Don&apos;t have an account?{" "}
             <Button variant="link" asChild className="p-0 h-auto text-primary hover:underline">
-                <Link href={`/auth/signup${searchParams.get("redirect") ? `?redirect=${searchParams.get("redirect")}` : ''}`}>Sign Up</Link>
+                <Link href={`/auth/signup${searchParams?.get("redirect") ? `?redirect=${searchParams.get("redirect")}` : ''}`}>Sign Up</Link>
             </Button>
             </p>
         </CardFooter>

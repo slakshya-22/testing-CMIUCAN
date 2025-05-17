@@ -7,7 +7,7 @@ import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { UserPlus, Eye, EyeOff, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -18,7 +18,6 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { auth } from "@/lib/firebase/config";
 import { useAuth } from "@/context/AuthContext";
-// import { Separator } from "@/components/ui/separator"; // Google Sign-Up removed
 
 const signUpSchema = z.object({
   displayName: z.string().min(2, { message: "Name must be at least 2 characters." }).max(50, { message: "Name must be 50 characters or less."}),
@@ -32,7 +31,7 @@ export default function SignUpPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
-  const { loading: authLoading, user } = useAuth(); // Removed signInWithGoogle
+  const { loading: authLoading, user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -45,21 +44,20 @@ export default function SignUpPage() {
     },
   });
 
-  const handleRedirect = () => {
-    const redirectPath = searchParams.get("redirect");
+  const handleRedirect = useCallback(() => {
+    const redirectPath = searchParams?.get("redirect"); // Added optional chaining
     if (redirectPath) {
       router.push(decodeURIComponent(redirectPath));
     } else {
       router.push("/");
     }
-  };
+  }, [router, searchParams]);
 
   useEffect(() => {
     if (!authLoading && user) {
       handleRedirect();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, authLoading, router]);
+  }, [user, authLoading, handleRedirect]);
 
 
   const onSubmit = async (data: SignUpFormValues) => {
@@ -73,7 +71,7 @@ export default function SignUpPage() {
         title: "Account Created Successfully!",
         description: "Welcome to Cash Me If You Can!",
       });
-      // Redirect handled by AuthContext or useEffect above
+      // Redirect handled by useEffect above
     } catch (error: any) {
       console.error("Sign up error:", error);
       let errorMessage = "Failed to create account. Please try again.";
@@ -89,8 +87,6 @@ export default function SignUpPage() {
       setIsSubmitting(false);
     }
   };
-
-  // Removed handleGoogleSignUp
 
   const isLoading = isSubmitting || authLoading;
 
@@ -172,13 +168,11 @@ export default function SignUpPage() {
           </form>
         </Form>
 
-        {/* Removed Google Sign Up Button and Separator */}
-
         <CardFooter className="flex flex-col space-y-2 pt-6">
             <p className="text-sm text-muted-foreground">
             Already have an account?{" "}
             <Button variant="link" asChild className="p-0 h-auto text-primary hover:underline">
-                <Link href={`/auth/signin${searchParams.get("redirect") ? `?redirect=${searchParams.get("redirect")}` : ''}`}>Sign In</Link>
+                <Link href={`/auth/signin${searchParams?.get("redirect") ? `?redirect=${searchParams.get("redirect")}` : ''}`}>Sign In</Link>
             </Button>
             </p>
         </CardFooter>
