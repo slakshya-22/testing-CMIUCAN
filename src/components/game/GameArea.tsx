@@ -11,7 +11,7 @@ import { ScoreDisplay } from "./ScoreDisplay";
 import { LifelinePanel } from "./LifelinePanel";
 import { GameOverDialog } from "./GameOverDialog";
 import { Button } from "@/components/ui/button";
-import { Loader2, Play, RefreshCw } from "lucide-react"; // Added RefreshCw for play again
+import { Loader2, Play, RefreshCw, AlertTriangle } from "lucide-react"; 
 import { Card, CardContent } from "@/components/ui/card";
 
 export function GameArea() {
@@ -44,8 +44,8 @@ export function GameArea() {
   );
 
   useEffect(() => {
-    if (gameStatus === "playing" && currentQuestion && !isAnswerRevealed) { // Only start/reset timer if not already answered
-      if (!isRunning) { // Only start if not already running for current question
+    if (gameStatus === "playing" && currentQuestion && !isAnswerRevealed) { 
+      if (!isRunning) { 
         resetTimer();
         startTimer();
       }
@@ -53,7 +53,7 @@ export function GameArea() {
       stopTimer();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameStatus, currentQuestion, isAnswerRevealed, startTimer, stopTimer, resetTimer]); // Added isAnswerRevealed
+  }, [gameStatus, currentQuestion, isAnswerRevealed]); // Removed timer controls from deps as they are stable
 
   if (gameStatus === "idle") { 
     return (
@@ -82,22 +82,24 @@ export function GameArea() {
     );
   }
   
-  if (gameStatus === "loading_questions" || (gameStatus === "playing" && !currentQuestion)) { 
+  if (gameStatus === "loading_questions") { 
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)] p-4">
         <Loader2 className="h-12 w-12 sm:h-16 sm:w-16 animate-spin text-primary" />
-        <p className="ml-4 text-xl sm:text-2xl text-muted-foreground mt-4">Loading questions, please wait...</p>
+        <p className="ml-4 text-xl sm:text-2xl text-muted-foreground mt-4">Generating fresh questions with AI, please wait...</p>
+        <p className="text-sm text-muted-foreground/70 mt-2">(This might take a few moments)</p>
       </div>
     );
   }
 
-  if (!currentQuestion && gameStatus !== "game_over") { // Fallback for unexpected missing question
+  if (!currentQuestion && (gameStatus === "playing" || gameStatus === "answered")) { 
      return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)] p-4">
-        <Loader2 className="h-12 w-12 sm:h-16 sm:w-16 animate-spin text-destructive" />
-        <p className="ml-4 text-xl sm:text-2xl text-destructive-foreground mt-4">Error loading question. Try starting again.</p>
-        <Button onClick={startGame} className="mt-8">
-          <RefreshCw className="mr-2 h-5 w-5" /> Restart Game
+        <AlertTriangle className="h-12 w-12 sm:h-16 sm:w-16 text-destructive" />
+        <p className="ml-4 text-xl sm:text-2xl text-destructive-foreground mt-4">Error loading question.</p>
+        <p className="text-muted-foreground mt-2">There was an issue fetching the next question.</p>
+        <Button onClick={startGame} className="mt-8 bg-primary hover:bg-primary/90">
+          <RefreshCw className="mr-2 h-5 w-5" /> Start New Game
         </Button>
       </div>
     );
@@ -116,15 +118,15 @@ export function GameArea() {
         )}
         <Card className="shadow-xl bg-card/90 backdrop-blur-sm border-primary/20 rounded-xl">
           <CardContent className="p-4 sm:p-6 space-y-3 sm:space-y-4">
-            {displayedAnswers.map((answer, index) => (
+            {currentQuestion && displayedAnswers.map((answer, index) => (
               <AnswerOption
-                key={`${currentQuestion?.id}-answer-${answer.text}-${index}`} // ensure unique key
+                key={`${currentQuestion.id}-answer-${answer.text}-${index}`} 
                 answer={answer}
-                onClick={() => currentQuestion && handleSelectAnswer(answer)}
-                isSelected={selectedAnswer?.text === answer.text}
+                onClick={() => handleSelectAnswer(answer)}
+                isSelected={selectedAnswer?.text === answer.text && selectedAnswer?.isCorrect === answer.isCorrect} // More robust selection check
                 isCorrect={answer.isCorrect}
                 isRevealed={isAnswerRevealed}
-                disabled={isAnswerRevealed || gameStatus === "game_over" || gameStatus === "answered"}
+                disabled={isAnswerRevealed || gameStatus === "game_over" || gameStatus === "answered" || gameStatus === "loading_questions"}
               />
             ))}
           </CardContent>
@@ -144,7 +146,7 @@ export function GameArea() {
             isAudiencePollUsed={isAudiencePollUsed}
             onAudiencePollUsed={useAudiencePoll}
             audiencePollResults={audiencePollResults}
-            disabled={isAnswerRevealed || gameStatus === "game_over" || gameStatus === "answered"}
+            disabled={isAnswerRevealed || gameStatus === "game_over" || gameStatus === "answered" || gameStatus === "loading_questions"}
           />
         )}
       </div>
@@ -159,5 +161,3 @@ export function GameArea() {
     </div>
   );
 }
-
-    

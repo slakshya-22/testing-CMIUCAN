@@ -1,7 +1,8 @@
+
 import type { Question } from "./types";
 
 // KBC-style point progression for 15 questions
-const KBC_POINTS = [
+export const KBC_POINTS = [
   10,    // Q1
   20,    // Q2
   30,    // Q3
@@ -204,3 +205,4 @@ export const TRIVIA_QUESTIONS: Question[] = [
     points: KBC_POINTS[14] // Jackpot
   }
 ];
+
