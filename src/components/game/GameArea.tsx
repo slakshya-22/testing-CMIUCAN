@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, RefreshCw, AlertTriangle, Home } from "lucide-react"; 
 import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
+import { useAuth } from "@/context/AuthContext"; // Import useAuth
 
 interface GameAreaProps {
   gameMode: string;
@@ -21,6 +22,7 @@ interface GameAreaProps {
 }
 
 export function GameArea({ gameMode, gameCategory }: GameAreaProps) {
+  const { user } = useAuth(); // Get user for passing to GameOverDialog
   const {
     currentQuestion,
     currentQuestionIndex,
@@ -42,6 +44,7 @@ export function GameArea({ gameMode, gameCategory }: GameAreaProps) {
     audiencePollResults,
     displayedAnswers,
     saveScore,
+    timeTakenMs, // Get timeTakenMs
   } = useGameState();
 
   const { timeLeft, startTimer, stopTimer, resetTimer, isRunning } = useTimer(
@@ -106,21 +109,12 @@ export function GameArea({ gameMode, gameCategory }: GameAreaProps) {
  }
   
   if (!currentQuestion && (gameStatus === "playing" || gameStatus === "answered")) { 
+     // This case should ideally be less frequent if error_loading_questions is handled properly.
+     // It might indicate a brief period where questions are expected but not yet available.
      return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)] p-4 text-center">
-        <AlertTriangle className="h-12 w-12 sm:h-16 sm:w-16 text-destructive mb-4" />
-        <p className="text-xl sm:text-2xl text-destructive-foreground font-semibold">Error Loading Question</p>
-        <p className="text-muted-foreground mt-2 mb-6">There was an issue fetching the next question.</p>
-        <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 mt-4">
-            <Button onClick={() => startGame(gameMode, gameCategory)} className="bg-primary hover:bg-primary/90">
-                <RefreshCw className="mr-2 h-5 w-5" /> Try Again
-            </Button>
-            <Button variant="outline" asChild>
-                <Link href="/">
-                    <Home className="mr-2 h-5 w-5" /> Go Home
-                </Link>
-            </Button>
-        </div>
+        <Loader2 className="h-12 w-12 sm:h-16 sm:w-16 animate-spin text-primary" />
+        <p className="ml-4 text-lg sm:text-xl text-muted-foreground mt-4">Loading question...</p>
       </div>
     );
   }
@@ -174,6 +168,7 @@ export function GameArea({ gameMode, gameCategory }: GameAreaProps) {
       <GameOverDialog
         isOpen={gameStatus === "game_over"}
         score={score}
+        timeTakenMs={timeTakenMs} // Pass timeTakenMs
         onPlayAgain={() => startGame(gameMode, gameCategory)}
         onSaveScore={saveScore}
         gameName="Cash Me If You Can"
