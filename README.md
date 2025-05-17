@@ -9,3 +9,4 @@ Look at `src/app/page.tsx` for the home page and `src/app/play/page.tsx` for the
 AI-powered question generation is handled by Genkit flows in `src/ai/flows/`.
 Game state management is in `src/hooks/use-game-state.ts`.
 UI components are in `src/components/`.
+Firebase authentication handles user sign-up and sign-in.

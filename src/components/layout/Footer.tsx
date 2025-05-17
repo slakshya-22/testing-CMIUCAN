@@ -19,10 +19,10 @@ export function Footer() {
             </Link>
         </div>
         <p className="text-xs sm:text-sm">
-          &copy; {currentYear} TriviMaster Games. All rights reserved.
+          Created by Lakshya Sharma with ❤️
         </p>
         <p className="text-xs mt-1">
-          Test your knowledge and climb the leaderboard!
+          &copy; {currentYear} All rights reserved.
         </p>
       </div>
     </footer>
