@@ -57,7 +57,7 @@ export function Header() {
               <span className="text-sm text-muted-foreground hidden lg:inline-block">
                 Hi, {user.displayName || user.email?.split('@')[0]}
               </span>
-              <Button variant="outline" size="sm" onClick={signOut} className="border-primary text-primary hover:bg-primary/10">
+              <Button variant="outline" size="sm" onClick={signOut} className="border-primary text-primary hover:bg-primary/10 hover:text-primary-foreground">
                 <LogOut className="mr-1.5 h-4 w-4" />
                 Sign Out
               </Button>
