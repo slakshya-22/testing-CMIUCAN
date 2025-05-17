@@ -47,8 +47,7 @@ export function useGameState() {
     setSelectedAnswer(null);
     setIsAnswerRevealed(false);
     setAudiencePollResults(null); 
-    setDisplayedAnswers([]); 
-
+    
     if (currentQuestionIndex < questions.length - 1) {
       const nextQuestion = questions[currentQuestionIndex + 1];
       if (nextQuestion) {
@@ -66,6 +65,7 @@ export function useGameState() {
       setGameStatus("game_over");
     }
   }, [currentQuestionIndex, questions, score, toast]);
+
 
   const handleSelectAnswer = useCallback((answer: AnswerType) => {
     if (isAnswerRevealed || gameStatus !== "playing") return;
@@ -110,7 +110,8 @@ export function useGameState() {
         numberOfQuestions: TOTAL_QUESTIONS_IN_GAME,
         difficulty: mode !== "Mixed" ? mode : undefined,
         category: category !== "General Knowledge" ? category : undefined,
-        sessionId: `session_${Date.now()}_${Math.random().toString(36).substring(7)}`
+        requestIdentifier: `session_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+        variationHint: Math.random().toString(36).slice(2, 12), // Generate a random string for variation
       };
       console.log('[useGameState] Generating questions with input:', JSON.stringify(input, null, 2));
       const aiResult = await generateTriviaQuestions(input);
@@ -144,8 +145,10 @@ export function useGameState() {
       let displayErrorMessage = "Could not generate new trivia questions. Please try again.";
       
       if (error instanceof Error && error.message) {
-        if (error.message.includes("An error occurred in the Server Components render") || error.message.includes("digest property is included on this error instance")) {
+        if (error.message.includes('An error occurred in the Server Components render') || error.message.includes('digest property is included on this error instance') || error.message.includes('A server error occurred during AI question generation')) {
           displayErrorMessage = "The AI failed to generate questions due to a server error. Please check server logs for details and try again.";
+        } else if (error.message.includes('AI returned malformed data') || error.message.includes('AI prompt execution failed to produce a structured output')) {
+           displayErrorMessage = "The AI provided questions in an unexpected format. We're working on it. Please try again in a moment.";
         } else {
           displayErrorMessage = error.message;
         }
@@ -185,6 +188,8 @@ export function useGameState() {
         console.warn("[useGameState] Game is 'playing' but currentQuestion is null. This might indicate an issue with question indexing or an empty question set post-load.");
         setDisplayedAnswers([]);
     } else if (gameStatus !== "playing") {
+        // Ensures displayedAnswers are cleared if not in a playing state with a current question
+        // (e.g. game over, error, idle, loading)
         setDisplayedAnswers([]); 
     }
   }, [currentQuestion, gameStatus, questions]);
@@ -226,7 +231,7 @@ export function useGameState() {
     if (!currentQuestion || isAudiencePollUsed) return;
 
     const results: Record<string, number> = {};
-    const optionsForPoll = [...displayedAnswers];
+    const optionsForPoll = [...displayedAnswers]; // Use current displayed answers for the poll
     const correctAnswerInFullSet = currentQuestion.answers.find(a => a.isCorrect);
     
     if (!correctAnswerInFullSet) { 
@@ -240,6 +245,7 @@ export function useGameState() {
     let correctAnswerPercentage = 0;
 
     if (isCorrectAnswerDisplayed) {
+        // Give correct answer a higher chance, e.g., 40-70%
         correctAnswerPercentage = Math.floor(Math.random() * 31) + 40; 
         results[correctAnswerText] = correctAnswerPercentage;
         totalPercentage -= correctAnswerPercentage;
@@ -249,22 +255,26 @@ export function useGameState() {
 
     otherOptions.forEach((option, index) => {
       if (index === otherOptions.length - 1) { 
+        // Assign remaining percentage to the last option
         results[option.text] = Math.max(0, totalPercentage);
       } else {
-        const maxForThisOption = Math.max(0, totalPercentage - (otherOptions.length - 1 - index)); 
+        // Distribute remaining percentage among other options
+        const maxForThisOption = Math.max(0, totalPercentage - (otherOptions.length - 1 - index)); // Ensure non-negative max
         const randomPercentage = Math.floor(Math.random() * (maxForThisOption + 1));
-        const assignedPercentage = Math.min(randomPercentage, totalPercentage);
+        const assignedPercentage = Math.min(randomPercentage, totalPercentage); // Don't assign more than available
         results[option.text] = assignedPercentage;
         totalPercentage -= assignedPercentage;
       }
     });
     
+    // Ensure all polled options have an entry, even if 0%
     optionsForPoll.forEach(opt => {
         if (!(opt.text in results)) {
             results[opt.text] = 0; 
         }
     });
 
+    // Normalize percentages if they don't sum to 100 (due to Math.floor, etc.)
     let currentSum = Object.values(results).reduce((acc, val) => acc + val, 0);
     if (currentSum !== 100 && optionsForPoll.length > 0) {
         const optionToAdjust = optionsForPoll.find(opt => opt.text === correctAnswerText && isCorrectAnswerDisplayed) || optionsForPoll[0];
@@ -272,6 +282,7 @@ export function useGameState() {
              results[optionToAdjust.text] = Math.max(0, Math.min(100, results[optionToAdjust.text] + (100 - currentSum)));
         }
     }
+    // Final check, if still not 100, assign remainder to first option if available
     currentSum = Object.values(results).reduce((acc, val) => acc + val, 0);
     if (currentSum !== 100 && optionsForPoll.length > 0) {
         const firstKey = optionsForPoll[0].text;
@@ -315,7 +326,7 @@ export function useGameState() {
         }
 
         if (shouldWrite) {
-            const scoreData: Omit<FirestoreScoreEntry, 'timestamp'> & { timestamp: any } = {
+            const scoreData: Omit<FirestoreScoreEntry, 'id' | 'date' | 'timestampMillis'> & { timestamp: any } = {
                 name: name,
                 score: score,
                 userId: userId,
@@ -368,3 +379,4 @@ export function useGameState() {
     saveScore,
   };
 }
+

@@ -17,7 +17,8 @@ const GenerateTriviaQuestionsInputSchema = z.object({
   numberOfQuestions: z.number().int().positive().describe('The number of trivia questions to generate.'),
   difficulty: z.string().optional().describe('Optional: The desired difficulty for all questions (e.g., "Easy", "Medium", "Hard"). If "Mixed" or not provided, a range of difficulties will be generated.'),
   category: z.string().optional().describe('Optional: The desired category for all questions (e.g., "Sports", "History"). If "General Knowledge" or not provided, questions will cover various topics.'),
-  sessionId: z.string().optional().describe('An optional unique identifier for the game session to help ensure question variety across multiple plays.'),
+  requestIdentifier: z.string().optional().describe('An optional unique identifier for the game session to help ensure question variety across multiple plays.'),
+  variationHint: z.string().optional().describe('An optional random string to further encourage unique question sets for each request.'),
 });
 export type GenerateTriviaQuestionsInput = z.infer<typeof GenerateTriviaQuestionsInputSchema>;
 
@@ -34,13 +35,16 @@ const triviaQuestionsPrompt = ai.definePrompt({
   name: 'generateTriviaQuestionsPrompt',
   input: {schema: GenerateTriviaQuestionsInputSchema},
   output: {schema: GenerateTriviaQuestionsOutputSchema}, 
-  config: { // Added config for temperature
-    temperature: 0.9, // Higher temperature for more diverse/creative outputs
+  config: {
+    temperature: 0.95, // Slightly increased temperature for more diverse/creative outputs
   },
   prompt: `You are a trivia question generator for a game show.
+  Request Identifier: {{{requestIdentifier}}}
+  Variation Hint for this specific request (use this to ensure a truly unique set of questions, do not include this hint in the questions themselves): {{{variationHint}}}
+
   Generate {{{numberOfQuestions}}} unique trivia questions.
 
-  It is CRITICAL that for each request (even with similar category or difficulty requests), you generate a FRESH and DISTINCT set of questions. Avoid repeating questions that might have been generated in previous requests. The game is played multiple times, so variety is key. DO NOT REPEAT QUESTIONS. EACH GAME SESSION MUST HAVE NEW QUESTIONS.
+  It is CRITICAL that for each request (even with similar category or difficulty requests), you generate a FRESH and DISTINCT set of questions. Avoid repeating questions that might have been generated in previous requests. The game is played multiple times, so variety is key. DO NOT REPEAT QUESTIONS. EACH GAME SESSION MUST HAVE NEW QUESTIONS. Use the Request Identifier and Variation Hint to ensure this uniqueness.
 
   {{#if category}}
   All questions should ideally be from the '{{category}}' category.
@@ -65,7 +69,6 @@ const triviaQuestionsPrompt = ai.definePrompt({
   Ensure the questions are engaging and suitable for a general audience.
   Avoid questions that are too niche, ambiguous, or require external knowledge beyond common understanding.
   The 'points' for each question will be assigned by the game logic later, so you don't need to include them in the output.
-  Session ID for this request (for your internal reference if needed, not for output): {{{sessionId}}}
   `,
 });
 
@@ -175,7 +178,12 @@ const generateTriviaQuestionsFlow = ai.defineFlow(
         } catch (e) { console.error('[generateTriviaQuestionsFlow] Could not stringify Zod issues.'); }
 
       } else if (error instanceof Error && error.message) {
-        errorMessage = error.message;
+        // Check for specific Next.js server component render error patterns
+        if (error.message.includes('An error occurred in the Server Components render') || (error as any).digest) {
+            errorMessage = 'A server error occurred during AI question generation. Please check server logs for specifics related to the AI model or service.';
+        } else {
+            errorMessage = error.message;
+        }
       } else if (typeof error === 'string') {
         errorMessage = error;
       } else {
@@ -186,11 +194,8 @@ const generateTriviaQuestionsFlow = ai.defineFlow(
         }
       }
       
-      if (errorMessage.includes('An error occurred in the Server Components render') || errorMessage.includes('digest property is included on this error instance')) {
-        errorMessage = 'A server error occurred while generating questions. Please check server logs for details.';
-      }
-      
       throw new Error(errorMessage);
     }
   }
 );
+
