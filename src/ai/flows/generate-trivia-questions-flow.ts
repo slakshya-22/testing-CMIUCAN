@@ -42,11 +42,7 @@ const triviaQuestionsPrompt = ai.definePrompt({
   {{/if}}
 
   {{#if difficulty}}
-    {{#if (eq difficulty "Mixed")}}
-    Ensure a good mix covering "Easy", "Medium", "Hard", and "Very Hard" difficulties. Try to make the questions progressively more difficult if possible.
-    {{else}}
-    All questions should ideally be of '{{difficulty}}' difficulty.
-    {{/if}}
+  All questions should ideally be of '{{difficulty}}' difficulty.
   {{else}}
   Ensure a good mix covering "Easy", "Medium", "Hard", and "Very Hard" difficulties. Try to make the questions progressively more difficult if possible.
   {{/if}}
