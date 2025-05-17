@@ -33,7 +33,7 @@ export function Footer() {
           </a>
         </div>
         <p className="text-xs sm:text-sm">
-          Created by Lakshya Sharma with ❤️
+          Created with ❤️ by: Nupur Panwar, Pranjal Kumar Rai, Junjaram Choudhary, Gaurav Gehlot, Lakshya Sharma
         </p>
         <p className="text-xs mt-1">
           &copy; {currentYear} All rights reserved.
