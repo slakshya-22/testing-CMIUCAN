@@ -9,9 +9,9 @@
  */
 
 import {ai} from '@/ai/genkit';
-import {z, ZodError} from 'genkit';
-import type { Question, Answer } from '@/lib/types';
-import { QuestionSchema, AnswerSchema, DifficultyEnum } from '@/lib/types';
+import {z} from 'genkit'; // Genkit re-exports Zod as z
+import type { Question } from '@/lib/types'; // Keep this for the final Question type
+import { AnswerSchema, DifficultyEnum } from '@/lib/types'; // QuestionSchema from here is for client-side
 
 const GenerateTriviaQuestionsInputSchema = z.object({
   numberOfQuestions: z.number().int().positive().describe('The number of trivia questions to generate.'),
@@ -24,6 +24,7 @@ export type GenerateTriviaQuestionsInput = z.infer<typeof GenerateTriviaQuestion
 
 // This schema is what the AI is prompted to return for each question.
 // Note: It doesn't include `points` as that's added client-side.
+// It also doesn't include `imageUrl` as we are not prompting for images.
 const AIQuestionOutputSchema = z.object({
   id: z.string().describe("A unique identifier for the question (e.g., generated UUID or sequential)."),
   text: z.string().min(1).describe("The text of the trivia question."),
@@ -34,22 +35,25 @@ const AIQuestionOutputSchema = z.object({
 const GenerateTriviaQuestionsOutputSchema = z.object({
   questions: z.array(AIQuestionOutputSchema).describe('An array of generated trivia questions, matching the AIQuestionOutputSchema structure.'),
 });
-export type GenerateTriviaQuestionsOutput = z.infer<typeof GenerateTriviaQuestionsOutputSchema>;
+// This type represents the direct output from the AI based on the prompt's output schema
+export type AIResponseType = z.infer<typeof GenerateTriviaQuestionsOutputSchema>;
 
 
+// The public function returns Promise<{ questions: Question[] }> where Question includes points.
 export async function generateTriviaQuestions(input: GenerateTriviaQuestionsInput): Promise<{ questions: Question[] }> {
-  // The public function now returns Promise<{ questions: Question[] }> where Question includes points.
-  // The flow itself will deal with the AI's raw output format.
   const flowResult = await generateTriviaQuestionsFlow(input);
-  return { questions: flowResult.questions as Question[] }; // Cast here after points are added or schema matches
+  // The flow returns questions matching AIQuestionOutputSchema.
+  // Points and imageUrl (if any) would be added by the client or another layer.
+  // For now, we cast as Question[], assuming points will be added later by game logic.
+  return { questions: flowResult.questions as Question[] };
 }
 
 const triviaQuestionsPrompt = ai.definePrompt({
   name: 'generateTriviaQuestionsPrompt',
   input: {schema: GenerateTriviaQuestionsInputSchema},
-  output: {schema: GenerateTriviaQuestionsOutputSchema}, 
+  output: {schema: GenerateTriviaQuestionsOutputSchema},
   config: {
-    temperature: 0.95, 
+    temperature: 0.95,
   },
   prompt: `You are a trivia question generator for a game show.
   Request Identifier: {{{requestIdentifier}}}
@@ -89,40 +93,47 @@ const generateTriviaQuestionsFlow = ai.defineFlow(
   {
     name: 'generateTriviaQuestionsFlow',
     inputSchema: GenerateTriviaQuestionsInputSchema,
-    // The flow's direct output (before points are added by client) uses AIQuestionOutputSchema structure
+    // The flow's direct output (before points are added by client) uses AIQuestionOutputSchema structure for its questions.
     outputSchema: z.object({ questions: z.array(AIQuestionOutputSchema) }),
   },
   async (input) => {
     let promptResult;
+    let aiOutput: AIResponseType | null | undefined = null;
+
     try {
       promptResult = await triviaQuestionsPrompt(input);
-    } catch (e: any) {
-      console.error('[generateTriviaQuestionsFlow] Critical error calling triviaQuestionsPrompt. Input:', JSON.stringify(input, null, 2), 'Prompt Execution Error:', e);
-      const message = e instanceof Error ? e.message : 'Failed to execute AI prompt due to an unknown error.';
-      throw new Error(`AI prompt execution failed: ${message}`);
-    }
+      aiOutput = promptResult.output; // output can be null if parsing failed or AI returned nothing matching schema
 
-    if (promptResult.error) {
-      console.error('[generateTriviaQuestionsFlow] Genkit reported an error after prompt execution. Input:', JSON.stringify(input, null, 2), 'Genkit Error:', promptResult.error);
-      const errorMessage = promptResult.error instanceof Error ? promptResult.error.message : JSON.stringify(promptResult.error);
-      throw new Error(`AI prompt failed internally: ${errorMessage}`);
+      if (!aiOutput) {
+        console.error('[generateTriviaQuestionsFlow] AI prompt returned no structured output (output is null or undefined). Input:', JSON.stringify(input, null, 2), 'Full Genkit Result:', JSON.stringify(promptResult, null, 2));
+        throw new Error('AI prompt returned no structured output. The AI response might be malformed or empty.');
+      }
+
+    } catch (e: any) {
+      // This catch block handles errors from `triviaQuestionsPrompt` (e.g., LLM API errors)
+      // or if Zod parsing by Genkit itself failed and threw an error.
+      console.error('[generateTriviaQuestionsFlow] Critical error during AI prompt execution or initial parsing. Input:', JSON.stringify(input, null, 2), 'Error:', e);
+      
+      let errorMessage = 'AI prompt execution failed or returned malformed data.';
+      if (e instanceof z.ZodError) {
+        errorMessage = `AI output failed Zod validation: ${e.errors.map(err => `${err.path.join('.')} - ${err.message}`).join(', ')}`;
+        console.error('[generateTriviaQuestionsFlow] Zod validation issues (details):', JSON.stringify(e.errors, null, 2));
+      } else if (e instanceof Error) {
+        errorMessage = e.message;
+      }
+      throw new Error(`AI Flow Error: ${errorMessage}`);
     }
     
-    const aiOutput = promptResult.output;
-
-    if (!aiOutput) {
-      console.error('[generateTriviaQuestionsFlow] AI prompt returned no structured output (output is null or undefined). Input:', JSON.stringify(input, null, 2), 'Full Genkit Result:', JSON.stringify(promptResult, null, 2));
-      throw new Error('AI prompt returned no structured output. The AI response might be malformed or empty.');
-    }
-
-    if (!Array.isArray(aiOutput.questions)) {
-      console.error('[generateTriviaQuestionsFlow] AI output for "questions" is not an array. Input:', JSON.stringify(input, null, 2), 'Received Output:', JSON.stringify(aiOutput, null, 2));
+    // At this point, aiOutput should be valid as per GenerateTriviaQuestionsOutputSchema,
+    // but we perform additional checks for robustness.
+    if (!aiOutput.questions || !Array.isArray(aiOutput.questions)) {
+      console.error('[generateTriviaQuestionsFlow] AI output for "questions" is not an array, even after initial Genkit parsing. Input:', JSON.stringify(input, null, 2), 'Received Output:', JSON.stringify(aiOutput, null, 2));
       throw new Error('AI returned malformed data: "questions" field was not an array.');
     }
 
     if (aiOutput.questions.length === 0 && input.numberOfQuestions > 0) {
       console.warn('[generateTriviaQuestionsFlow] AI returned an empty list of questions when questions were requested. Input:', JSON.stringify(input, null, 2));
-      // Depending on requirements, you might throw an error here. For now, we'll let an empty array pass through.
+      // Depending on requirements, you might throw an error here. For now, an empty array will pass through to be handled by subsequent checks.
     }
     
     const validatedQuestions: (Omit<Question, 'points' | 'imageUrl'>)[] = [];
@@ -169,12 +180,12 @@ const generateTriviaQuestionsFlow = ai.defineFlow(
           id: questionId,
           text: qSource.text,
           answers: qSource.answers.map(a => ({ text: a.text, isCorrect: a.isCorrect })), // Ensure answer structure
-          difficulty: questionDifficulty as Question['difficulty'],
+          difficulty: questionDifficulty as Question['difficulty'], // Cast to the specific enum type
         });
 
       } catch (validationError: any) {
         console.warn(`[generateTriviaQuestionsFlow] Skipping question at index ${index} due to validation error: ${validationError.message}. Original data:`, JSON.stringify(qSource, (key, value) => typeof value === 'string' && value.length > 100 ? value.substring(0,100) + '...' : value, 2));
-        // Continue to next question
+        // Continue to next question, allowing other valid questions to pass
       }
     }
 
@@ -190,3 +201,5 @@ const generateTriviaQuestionsFlow = ai.defineFlow(
     return { questions: validatedQuestions };
   }
 );
+
+    
