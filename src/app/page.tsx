@@ -3,7 +3,7 @@
 
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import Image from "next/image"; // Keep for any potential future non-placeholder images
+// Removed unused Image import
 import { PlayCircle, Brain, Settings, ChevronRight, Tv, Sparkles, HelpCircle, Mail, Gamepad2, Workflow, Layers, Rocket, Smartphone, UserCircle, LogIn, Loader2, Trophy } from "lucide-react";
 import { useState } from "react";
 import {
@@ -165,7 +165,7 @@ export default function HomePage() {
           onClick={handlePlayNowClick}
           size="lg"
           className="bg-gradient-to-r from-primary via-accent to-secondary text-primary-foreground hover:shadow-2xl hover:shadow-accent/50 hover:scale-105 transform transition-all duration-300 ease-in-out text-lg sm:text-xl px-10 sm:px-12 py-6 sm:py-7 group rounded-lg font-semibold"
-          disabled={loading}
+          disabled={loading && !user}
         >
           {loading && !user ? <Loader2 className="mr-2 h-6 w-6 animate-spin" /> : <PlayCircle className="mr-2 h-6 w-6 sm:h-7 sm:w-7 group-hover:animate-ping" />}
           Let's Play!
@@ -182,7 +182,7 @@ export default function HomePage() {
 
       {/* About the Game Section */}
       <section className="w-full max-w-3xl lg:max-w-4xl px-2">
-        <Card className="shadow-2xl bg-card/90 backdrop-blur-lg border-primary/30 rounded-xl overflow-hidden">
+        <Card className="shadow-2xl bg-card/80 backdrop-blur-md border-primary/30 rounded-xl overflow-hidden">
           <CardHeader className="text-center bg-gradient-to-br from-primary/80 via-primary/70 to-secondary/80 p-6 sm:p-8">
             <div className="inline-block mx-auto p-4 bg-background/20 rounded-full mb-4 shadow-lg">
                 <Tv className="h-12 w-12 text-primary-foreground" />
@@ -204,7 +204,7 @@ export default function HomePage() {
 
       {/* How It Works Section */}
       <section className="w-full max-w-3xl lg:max-w-4xl px-2">
-        <Card className="shadow-2xl bg-card/90 backdrop-blur-lg border-secondary/30 rounded-xl overflow-hidden">
+        <Card className="shadow-2xl bg-card/80 backdrop-blur-md border-secondary/30 rounded-xl overflow-hidden">
           <CardHeader className="text-center bg-gradient-to-br from-secondary/80 via-secondary/70 to-accent/80 p-6 sm:p-8">
             <div className="inline-block mx-auto p-4 bg-background/20 rounded-full mb-4 shadow-lg">
               <Workflow className="h-12 w-12 text-primary-foreground" />
@@ -235,7 +235,7 @@ export default function HomePage() {
 
       {/* Key Features Section */}
       <section className="w-full max-w-3xl lg:max-w-4xl px-2">
-        <Card className="shadow-2xl bg-card/90 backdrop-blur-lg border-accent/30 rounded-xl overflow-hidden">
+        <Card className="shadow-2xl bg-card/80 backdrop-blur-md border-accent/30 rounded-xl overflow-hidden">
           <CardHeader className="text-center bg-gradient-to-br from-accent/80 via-accent/70 to-primary/80 p-6 sm:p-8">
              <div className="inline-block mx-auto p-4 bg-background/20 rounded-full mb-4 shadow-lg">
                 <Sparkles className="h-12 w-12 text-accent-foreground" />
@@ -269,7 +269,7 @@ export default function HomePage() {
 
       {/* FAQs Section */}
       <section className="w-full max-w-3xl lg:max-w-4xl px-2">
-        <Card className="shadow-2xl bg-card/90 backdrop-blur-lg border-primary/30 rounded-xl overflow-hidden">
+        <Card className="shadow-2xl bg-card/80 backdrop-blur-md border-primary/30 rounded-xl overflow-hidden">
           <CardHeader className="text-center bg-gradient-to-br from-primary/80 via-primary/70 to-secondary/80 p-6 sm:p-8">
             <div className="inline-block mx-auto p-4 bg-background/20 rounded-full mb-4 shadow-lg">
                 <HelpCircle className="h-12 w-12 text-primary-foreground" />
@@ -295,7 +295,7 @@ export default function HomePage() {
 
       {/* Get In Touch Section */}
       <section className="w-full max-w-3xl lg:max-w-4xl px-2">
-        <Card className="shadow-2xl bg-card/90 backdrop-blur-lg border-secondary/30 rounded-xl overflow-hidden">
+        <Card className="shadow-2xl bg-card/80 backdrop-blur-md border-secondary/30 rounded-xl overflow-hidden">
           <CardHeader className="text-center bg-gradient-to-br from-secondary/80 via-secondary/70 to-accent/80 p-6 sm:p-8">
             <div className="inline-block mx-auto p-4 bg-background/20 rounded-full mb-4 shadow-lg">
                 <Mail className="h-12 w-12 text-primary-foreground" />
@@ -307,11 +307,10 @@ export default function HomePage() {
               Have feedback, suggestions, or just want to say hi? We're always looking to improve "Cash Me If You Can."
               Your thoughts help us make the game even better!
             </p>
-            <p className="text-sm">
-              (This is a placeholder. In a real app, you might find a contact form or email address here.)
-            </p>
-            <Button variant="outline" className="mt-4 border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground text-lg px-8 py-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-105">
-              Send Feedback (Coming Soon)
+            <Button asChild variant="outline" className="mt-4 border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground text-lg px-8 py-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-105">
+              <Link href="mailto:feedback@example.com?subject=Feedback%20for%20Cash%20Me%20If%20You%20Can">
+                Send Feedback
+              </Link>
             </Button>
           </CardContent>
         </Card>
@@ -340,4 +339,3 @@ export default function HomePage() {
     </div>
   );
 }
-
