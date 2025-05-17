@@ -42,16 +42,12 @@ export function useGameState() {
 
   useEffect(() => {
     if (currentQuestion) {
-      // Shuffle answers for display when a new question is set or 50:50 is not active for it
-      if (!isFiftyFiftyUsed || displayedAnswers.length !== 2) { // Re-shuffle if not 50:50 or if 50:50 was for a previous q
-         setDisplayedAnswers(shuffleArray(currentQuestion.answers));
-      }
+      setDisplayedAnswers(shuffleArray(currentQuestion.answers));
     }
-  }, [currentQuestion, isFiftyFiftyUsed]); // Add isFiftyFiftyUsed to deps
+  }, [currentQuestion]); 
   
   const startGame = useCallback(() => {
     setGameStatus("loading_questions");
-    // Use the first TOTAL_QUESTIONS_IN_GAME questions, already ordered by difficulty
     const gameQuestions = TRIVIA_QUESTIONS.slice(0, TOTAL_QUESTIONS_IN_GAME);
     setQuestions(gameQuestions); 
     setCurrentQuestionIndex(0);
@@ -63,8 +59,27 @@ export function useGameState() {
     setIsFiftyFiftyUsed(false);
     setIsAudiencePollUsed(false);
     setAudiencePollResults(null);
-    // displayedAnswers will be set by the useEffect hook when currentQuestion changes
   }, []);
+
+  const goToNextQuestion = useCallback(() => {
+    if (currentQuestionIndex < questions.length - 1) {
+      setCurrentQuestionIndex((prevIndex) => prevIndex + 1);
+      setSelectedAnswer(null);
+      setIsAnswerRevealed(false);
+      setGameStatus("playing");
+      setAudiencePollResults(null); 
+      // displayedAnswers will be reset by the useEffect hook due to currentQuestion change
+      // and 50:50 effect is not carried over.
+    } else {
+      toast({
+        title: "Congratulations!",
+        description: `You've answered all ${questions.length} questions and won ${score} points!`, // Score is already updated
+        variant: "default", 
+        duration: 5000,
+      });
+      setGameStatus("game_over");
+    }
+  }, [currentQuestionIndex, questions.length, score, toast]); // Removed currentQuestion from deps as it's not directly used here, points logic is in handleSelectAnswer
 
   const handleSelectAnswer = useCallback((answer: AnswerType) => {
     if (isAnswerRevealed || gameStatus !== "playing") return;
@@ -72,8 +87,10 @@ export function useGameState() {
     setIsAnswerRevealed(true);
     setGameStatus("answered");
 
+    let newScore = score;
     if (answer.isCorrect) {
-      setScore((prevScore) => prevScore + (currentQuestion?.points || 0));
+      newScore = score + (currentQuestion?.points || 0);
+      setScore(newScore);
       toast({
         title: "Correct!",
         description: `You won ${currentQuestion?.points || 0} points.`,
@@ -83,7 +100,7 @@ export function useGameState() {
     } else {
       toast({
         title: "Incorrect!",
-        description: `The correct answer was: "${currentQuestion?.answers.find(a => a.isCorrect)?.text}". You walk away with the last checkpoint score.`,
+        description: `The correct answer was: "${currentQuestion?.answers.find(a => a.isCorrect)?.text}". You walk away with ${score} points.`,
         variant: "destructive",
         duration: 4000,
       });
@@ -91,35 +108,14 @@ export function useGameState() {
     
     setTimeout(() => {
       if (!answer.isCorrect) {
-        // Implement KBC-style checkpoint logic for score retention later if needed
         setGameStatus("game_over");
       } else {
         goToNextQuestion();
       }
     }, answer.isCorrect ? 2000 : 4000);
 
-  }, [isAnswerRevealed, gameStatus, currentQuestion, toast]);
+  }, [isAnswerRevealed, gameStatus, currentQuestion, score, toast, goToNextQuestion]);
 
-
-  const goToNextQuestion = useCallback(() => {
-    if (currentQuestionIndex < questions.length - 1) {
-      setCurrentQuestionIndex((prevIndex) => prevIndex + 1);
-      setSelectedAnswer(null);
-      setIsAnswerRevealed(false);
-      setGameStatus("playing");
-      setAudiencePollResults(null); 
-      // displayedAnswers will be re-shuffled by useEffect due to currentQuestion change
-      // 50:50 is per question, so effectively reset by new question / full answer set
-    } else {
-      toast({
-        title: "Congratulations!",
-        description: `You've answered all ${questions.length} questions and won ${score + (currentQuestion?.points || 0)} points!`,
-        variant: "default", // Success variant
-        duration: 5000,
-      });
-      setGameStatus("game_over");
-    }
-  }, [currentQuestionIndex, questions, score, currentQuestion, toast]);
 
   const handleTimeUp = useCallback(() => {
     if (gameStatus === "playing") {
@@ -134,25 +130,27 @@ export function useGameState() {
   
   const usePhoneAFriend = useCallback(() => {
     setIsPhoneAFriendUsed(true);
-    // Actual AI call happens in PhoneAFriendDialog
   }, []);
 
   const useFiftyFifty = useCallback(() => {
-    if (!currentQuestion || isFiftyFiftyUsed || displayedAnswers.length === 2) return;
-
-    const correctAnswer = currentQuestion.answers.find(a => a.isCorrect);
-    const incorrectAnswers = currentQuestion.answers.filter(a => !a.isCorrect);
+    if (!currentQuestion || isFiftyFiftyUsed ) {
+      return;
+    }
+     // Ensure we are working with the full original set if this is the first time 50:50 is used for this question
+    const originalAnswers = currentQuestion.answers;
+    const correctAnswer = originalAnswers.find(a => a.isCorrect);
+    const incorrectAnswers = originalAnswers.filter(a => !a.isCorrect);
     
     if (correctAnswer && incorrectAnswers.length > 0) {
       // Shuffle incorrect answers and pick one
       const randomIncorrectAnswer = shuffleArray(incorrectAnswers)[0];
-      // Set displayed answers to only these two, shuffled
+      // Combine correct and one random incorrect, then shuffle for display
       const newDisplayedAnswers = shuffleArray([correctAnswer, randomIncorrectAnswer]);
       setDisplayedAnswers(newDisplayedAnswers);
     }
     setIsFiftyFiftyUsed(true);
     toast({ title: "50:50 Used", description: "Two incorrect options have been removed!"});
-  }, [currentQuestion, isFiftyFiftyUsed, displayedAnswers, toast]); // added displayedAnswers to deps
+  }, [currentQuestion, isFiftyFiftyUsed, toast]);
 
   const useAudiencePoll = useCallback(() => {
     if (!currentQuestion || isAudiencePollUsed) return;
@@ -161,42 +159,43 @@ export function useGameState() {
     const correctAnswerText = currentQuestion.answers.find(a => a.isCorrect)?.text;
     let totalPercentage = 100;
     
-    // Simulate audience poll: give correct answer a higher chance (e.g., 40-70%)
-    const correctAnswerPercentage = Math.floor(Math.random() * 31) + 40; // 40 to 70
+    // Give correct answer a higher chance (e.g., 40-70%)
+    const correctAnswerPercentage = Math.floor(Math.random() * 31) + 40; 
 
     if (correctAnswerText) {
       results[correctAnswerText] = correctAnswerPercentage;
       totalPercentage -= correctAnswerPercentage;
     }
     
-    // Distribute remaining percentage among other options
+    // Distribute remaining percentage among currently displayed options (could be 2 or 4)
     const otherOptions = displayedAnswers.filter(a => a.text !== correctAnswerText);
     otherOptions.forEach((answer, index) => {
-      if (index === otherOptions.length - 1) { // Last incorrect answer gets remaining percentage
+      if (index === otherOptions.length - 1) { 
+        // Assign remaining percentage to the last option
         results[answer.text] = totalPercentage > 0 ? totalPercentage : 0;
       } else {
-        // Ensure percentage is positive and not exceeding remaining total
-        const maxPossible = totalPercentage - (otherOptions.length - 1 - index); // ensure others can get at least 1%
-        const randomPercentage = Math.floor(Math.random() * Math.max(1, maxPossible / (otherOptions.length - index)));
+        // Assign a random portion of the remaining percentage
+        // Ensure that subsequent options can still get some percentage
+        const maxPossible = totalPercentage - (otherOptions.length - 1 - index); // at least 1% for each remaining
+        const randomPercentage = Math.floor(Math.random() * Math.max(1, maxPossible / (otherOptions.length - index))); // Avoid getting 0 too easily
         const assignedPercentage = Math.min(randomPercentage, totalPercentage);
         results[answer.text] = assignedPercentage;
         totalPercentage -= assignedPercentage;
       }
     });
     
-    // Ensure sum is 100, adjust if needed (e.g., due to rounding or if correct answer wasn't in displayed for some reason)
+    // Ensure sum is exactly 100% by adjusting one of the values if needed
     let currentSum = Object.values(results).reduce((acc, val) => acc + val, 0);
-    if (currentSum !== 100 && correctAnswerText && results[correctAnswerText]) {
+    if (currentSum !== 100 && correctAnswerText && results[correctAnswerText] !== undefined) {
         results[correctAnswerText] += (100 - currentSum);
-        // Ensure no negative percentages from adjustment
-        results[correctAnswerText] = Math.max(0, results[correctAnswerText]); 
-        // Re-normalize if adjustment made it > 100
+        results[correctAnswerText] = Math.max(0, results[correctAnswerText]); // Don't go below 0
+        // If over 100 after adjustment, try to reduce from the highest other non-correct if possible or correct
         currentSum = Object.values(results).reduce((acc, val) => acc + val, 0);
-        if (currentSum > 100 && results[correctAnswerText]) {
+        if (currentSum > 100 && results[correctAnswerText] !== undefined) {
             results[correctAnswerText] -= (currentSum - 100);
         }
-    } else if (currentSum !== 100 && otherOptions.length > 0) {
-        // Fallback: distribute to the first other option if correct answer is not available for adjustment
+    } else if (currentSum !== 100 && otherOptions.length > 0 && results[otherOptions[0].text] !== undefined) {
+        // Fallback: adjust the first 'other' option if correct answer was not in the results for some reason
         results[otherOptions[0].text] = (results[otherOptions[0].text] || 0) + (100-currentSum);
         results[otherOptions[0].text] = Math.max(0, results[otherOptions[0].text] || 0);
     }
@@ -204,27 +203,50 @@ export function useGameState() {
 
     setAudiencePollResults(results);
     setIsAudiencePollUsed(true);
-    // Toast for audience poll is usually shown when dialog opens or after results.
   }, [currentQuestion, isAudiencePollUsed, displayedAnswers, toast]);
 
 
   const saveScore = useCallback((name: string) => {
-    const newScoreEntry: ScoreEntry = {
-      id: new Date().toISOString(),
-      name,
-      score,
-      date: new Date().toLocaleDateString(),
-    };
-    // Updated localStorage key
-    const highScores = JSON.parse(localStorage.getItem("cashMeIfYouCanHighScores") || "[]") as ScoreEntry[];
-    highScores.push(newScoreEntry);
-    highScores.sort((a, b) => b.score - a.score);
-    localStorage.setItem("cashMeIfYouCanHighScores", JSON.stringify(highScores.slice(0, 10)));
+    const localStorageKey = "cashMeIfYouCanHighScores";
+    const highScores = JSON.parse(localStorage.getItem(localStorageKey) || "[]") as ScoreEntry[];
     
-    toast({
-      title: "Score Saved!",
-      description: `${name}, your score of ${score} has been saved to the "Cash Me If You Can" leaderboard.`,
-    });
+    const normalizedName = name.trim().toLowerCase();
+    const existingPlayerIndex = highScores.findIndex(entry => entry.name.toLowerCase() === normalizedName);
+    
+    if (existingPlayerIndex !== -1) {
+      // Player exists
+      if (score > highScores[existingPlayerIndex].score) {
+        highScores[existingPlayerIndex].score = score;
+        highScores[existingPlayerIndex].date = new Date().toLocaleDateString();
+        toast({
+          title: "High Score Updated!",
+          description: `${highScores[existingPlayerIndex].name}, your new high score of ${score} has been saved.`,
+        });
+      } else {
+        toast({
+          title: "Score Not Higher",
+          description: `${highScores[existingPlayerIndex].name}, your score of ${score} did not beat your previous high score of ${highScores[existingPlayerIndex].score}.`,
+          duration: 4000,
+        });
+      }
+    } else {
+      // New player
+      const newScoreEntry: ScoreEntry = {
+        id: new Date().toISOString(),
+        name: name.trim(), // Save with original casing but use lowercase for comparison
+        score,
+        date: new Date().toLocaleDateString(),
+      };
+      highScores.push(newScoreEntry);
+      toast({
+        title: "Score Saved!",
+        description: `${name.trim()}, your score of ${score} has been saved to the "Cash Me If You Can" leaderboard.`,
+      });
+    }
+
+    highScores.sort((a, b) => b.score - a.score);
+    localStorage.setItem(localStorageKey, JSON.stringify(highScores.slice(0, 10)));
+    
   }, [score, toast]);
 
 
@@ -247,9 +269,8 @@ export function useGameState() {
     goToNextQuestion,
     handleTimeUp,
     INITIAL_TIMER_DURATION,
-    totalQuestions: questions.length, // This will be TOTAL_QUESTIONS_IN_GAME
+    totalQuestions: questions.length,
     
-    // Lifelines
     isPhoneAFriendUsed,
     usePhoneAFriend,
     isFiftyFiftyUsed,
