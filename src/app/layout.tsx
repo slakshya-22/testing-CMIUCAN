@@ -1,16 +1,13 @@
+
 import type { Metadata } from "next";
-// import { GeistSans } from "geist/font/sans"; // Removed problematic import
-// import { GeistMono } from "geist/font/mono"; // Removed problematic import
 import "./globals.css";
 import { Header } from "@/components/layout/Header";
+import { Footer } from "@/components/layout/Footer"; // Added Footer
 import { Toaster } from "@/components/ui/toaster";
-
-// const geistSans = GeistSans; // Removed problematic const
-// const geistMono = GeistMono; // Removed problematic const
 
 export const metadata: Metadata = {
   title: "Cash Me If You Can",
-  description: "The ultimate KBC-style trivia game experience!",
+  description: "The ultimate trivia game experience!", // Removed KBC reference
 };
 
 export default function RootLayout({
@@ -21,12 +18,13 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`font-sans antialiased min-h-screen flex flex-col bg-background text-foreground`} // Removed geistSans.variable and geistMono.variable
+        className={`font-sans antialiased min-h-screen flex flex-col bg-background text-foreground`}
       >
         <Header />
         <main className="flex-grow container mx-auto px-4 py-8">
           {children}
         </main>
+        <Footer /> {/* Added Footer */}
         <Toaster />
       </body>
     </html>

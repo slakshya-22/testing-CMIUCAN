@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -20,10 +21,10 @@ interface GameOverDialogProps {
   score: number;
   onPlayAgain: () => void;
   onSaveScore: (name: string) => void;
-  gameName?: string; // Optional game name for theming
+  gameName?: string;
 }
 
-export function GameOverDialog({ isOpen, score, onPlayAgain, onSaveScore, gameName = "TriviMaster" }: GameOverDialogProps) {
+export function GameOverDialog({ isOpen, score, onPlayAgain, onSaveScore, gameName = "Cash Me If You Can" }: GameOverDialogProps) {
   const [name, setName] = useState("");
   const router = useRouter();
   const localStorageKey = `${gameName.toLowerCase().replace(/\s+/g, "-")}PlayerName`;
@@ -60,7 +61,7 @@ export function GameOverDialog({ isOpen, score, onPlayAgain, onSaveScore, gameNa
             Game Over!
           </DialogTitle>
           <DialogDescription className="text-muted-foreground">
-            Congratulations! You scored <strong className="text-accent font-bold">{score}</strong> points in {gameName}.
+            Congratulations! You scored <strong className="text-accent font-bold">{score.toLocaleString()}</strong> points in {gameName}.
             Enter your name to save your score to the leaderboard.
           </DialogDescription>
         </DialogHeader>
@@ -74,7 +75,7 @@ export function GameOverDialog({ isOpen, score, onPlayAgain, onSaveScore, gameNa
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="col-span-3 bg-input border-border focus:ring-primary text-foreground placeholder:text-muted-foreground/70"
-              placeholder="KBC Champion"
+              placeholder="Trivia Champion"
             />
           </div>
         </div>

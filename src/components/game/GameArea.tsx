@@ -11,11 +11,16 @@ import { ScoreDisplay } from "./ScoreDisplay";
 import { LifelinePanel } from "./LifelinePanel";
 import { GameOverDialog } from "./GameOverDialog";
 import { Button } from "@/components/ui/button";
-import { Loader2, Play, RefreshCw, AlertTriangle, Home } from "lucide-react"; 
+import { Loader2, RefreshCw, AlertTriangle, Home } from "lucide-react"; 
 import { Card, CardContent } from "@/components/ui/card";
-import Link from "next/link"; // Import Link for the Home button
+import Link from "next/link";
 
-export function GameArea() {
+interface GameAreaProps {
+  gameMode: string;
+  gameCategory: string;
+}
+
+export function GameArea({ gameMode, gameCategory }: GameAreaProps) {
   const {
     currentQuestion,
     currentQuestionIndex,
@@ -56,12 +61,12 @@ export function GameArea() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameStatus, currentQuestion, isAnswerRevealed]); 
 
-  // Automatically start the game if the status is idle when the component mounts or gameStatus changes to idle
   useEffect(() => {
     if (gameStatus === "idle") {
-      startGame();
+      startGame(gameMode, gameCategory);
     }
-  }, [gameStatus, startGame]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameStatus, startGame, gameMode, gameCategory]);
 
 
   if (gameStatus === "idle" || gameStatus === "loading_questions") { 
@@ -85,7 +90,7 @@ export function GameArea() {
         <p className="ml-4 text-xl sm:text-2xl text-destructive-foreground mt-4">Error loading question.</p>
         <p className="text-muted-foreground mt-2">There was an issue fetching the next question.</p>
         <div className="flex space-x-4 mt-8">
-            <Button onClick={startGame} className="bg-primary hover:bg-primary/90">
+            <Button onClick={() => startGame(gameMode, gameCategory)} className="bg-primary hover:bg-primary/90">
                 <RefreshCw className="mr-2 h-5 w-5" /> Try Again
             </Button>
             <Button variant="outline" asChild>
@@ -147,7 +152,7 @@ export function GameArea() {
       <GameOverDialog
         isOpen={gameStatus === "game_over"}
         score={score}
-        onPlayAgain={startGame} // This will restart the game on the current /play page
+        onPlayAgain={() => startGame(gameMode, gameCategory)}
         onSaveScore={saveScore}
         gameName="Cash Me If You Can"
       />

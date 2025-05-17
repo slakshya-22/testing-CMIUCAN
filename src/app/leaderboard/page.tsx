@@ -13,7 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trophy, ListChecks, Medal } from "lucide-react"; // Medal for rank
+import { Trophy, ListChecks, Medal } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils"; 
@@ -27,12 +27,11 @@ export default function LeaderboardPage() {
     if (storedScores) {
       try {
         const parsedScores = JSON.parse(storedScores) as ScoreEntry[];
-        // Sort scores again just in case they weren't stored sorted or got corrupted
         parsedScores.sort((a, b) => b.score - a.score);
-        setScores(parsedScores.slice(0,10)); // Ensure only top 10
+        setScores(parsedScores.slice(0,10)); 
       } catch (e) {
         console.error("Failed to parse scores from localStorage", e);
-        localStorage.removeItem("cashMeIfYouCanHighScores"); // Clear corrupted data
+        localStorage.removeItem("cashMeIfYouCanHighScores"); 
       }
     }
     setIsLoading(false);
@@ -78,7 +77,7 @@ export default function LeaderboardPage() {
             </div>
           ) : (
             <Table>
-              <TableCaption className="text-sm sm:text-base mt-4">Top 10 "Cash Me If You Can" Champions</TableCaption>
+              <TableCaption className="text-sm sm:text-base mt-4">Top 10 Champions</TableCaption>
               <TableHeader>
                 <TableRow className="border-b-primary/30">
                   <TableHead className="w-[60px] sm:w-[80px] text-center text-accent font-semibold text-sm sm:text-base">Rank</TableHead>
@@ -93,9 +92,9 @@ export default function LeaderboardPage() {
                     key={entry.id || index} 
                     className={cn(
                         "hover:bg-primary/10 border-b-border/50",
-                        index === 0 && "bg-accent/10 hover:bg-accent/20", // Highlight #1
-                        index === 1 && "bg-primary/15 hover:bg-primary/25", // Highlight #2
-                        index === 2 && "bg-secondary/10 hover:bg-secondary/20" // Highlight #3
+                        index === 0 && "bg-accent/10 hover:bg-accent/20", 
+                        index === 1 && "bg-primary/15 hover:bg-primary/25", 
+                        index === 2 && "bg-secondary/10 hover:bg-secondary/20" 
                     )}
                   >
                     <TableCell className="font-medium text-center text-base sm:text-lg">
