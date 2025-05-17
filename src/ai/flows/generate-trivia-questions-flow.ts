@@ -3,16 +3,18 @@
 /**
  * @fileOverview A Genkit flow to generate a set of trivia questions for the game.
  *
- * - generateTriviaQuestions - A function that generates a specified number of trivia questions.
- * - GenerateTriviaQuestionsInput - The input type for the generateTriviaQuestions function.
- * - GenerateTriviaQuestionsOutput - The return type for the generateTriviaQuestions function.
+ * Exports:
+ * - generateTriviaQuestions: Function to generate trivia questions based on input criteria.
+ * - GenerateTriviaQuestionsInput: Type for the input to generateTriviaQuestions.
+ * - GenerateTriviaQuestionsOutput: Type for the output from generateTriviaQuestions.
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit'; // Genkit re-exports Zod as z
-import type { Question } from '@/lib/types'; // Keep this for the final Question type
-import { AnswerSchema, DifficultyEnum } from '@/lib/types'; // QuestionSchema from here is for client-side
+import {z} from 'genkit'; 
+import type { Question } from '@/lib/types'; // For the final Question type including points
+import { AnswerSchema, DifficultyEnum } from '@/lib/types';
 
+// Schema for input to the AI question generation flow
 const GenerateTriviaQuestionsInputSchema = z.object({
   numberOfQuestions: z.number().int().positive().describe('The number of trivia questions to generate.'),
   difficulty: z.string().optional().describe('Optional: The desired difficulty for all questions (e.g., "Easy", "Medium", "Hard"). If "Mixed" or not provided, a range of difficulties will be generated.'),
@@ -22,36 +24,33 @@ const GenerateTriviaQuestionsInputSchema = z.object({
 });
 export type GenerateTriviaQuestionsInput = z.infer<typeof GenerateTriviaQuestionsInputSchema>;
 
-// This schema is what the AI is prompted to return for each question.
-// Note: It doesn't include `points` as that's added client-side.
-// It also doesn't include `imageUrl` as we are not prompting for images.
-const AIQuestionOutputSchema = z.object({
+// Schema for the structure of each question as expected from the AI (before points are added)
+const GeneratedQuestionSchema = z.object({
   id: z.string().describe("A unique identifier for the question (e.g., generated UUID or sequential, must be unique within THIS set of questions)."),
   text: z.string().min(1).describe("The text of the trivia question."),
   answers: z.array(AnswerSchema).length(4).describe("An array of exactly four answer options."),
   difficulty: DifficultyEnum.describe("The difficulty level of the question."),
 });
 
-const GenerateTriviaQuestionsOutputSchema = z.object({
-  questions: z.array(AIQuestionOutputSchema).describe('An array of generated trivia questions, matching the AIQuestionOutputSchema structure.'),
+// Schema for the overall output structure expected from the AI
+const AIGeneratedTriviaOutputSchema = z.object({
+  questions: z.array(GeneratedQuestionSchema).describe('An array of generated trivia questions, matching the GeneratedQuestionSchema structure.'),
 });
-// This type represents the direct output from the AI based on the prompt's output schema
-export type AIResponseType = z.infer<typeof GenerateTriviaQuestionsOutputSchema>;
+// Type for the direct output from the AI based on the prompt's output schema
+export type AIGeneratedTriviaData = z.infer<typeof AIGeneratedTriviaOutputSchema>;
 
-
-// The public function returns Promise<{ questions: Question[] }> where Question includes points.
-export async function generateTriviaQuestions(input: GenerateTriviaQuestionsInput): Promise<{ questions: Question[] }> {
+// Public function that calls the Genkit flow and returns questions ready for game use
+// Note: The flow itself returns questions without points; points are added client-side.
+export async function generateTriviaQuestions(input: GenerateTriviaQuestionsInput): Promise<{ questions: Omit<Question, 'points' | 'imageUrl'>[] }> {
   const flowResult = await generateTriviaQuestionsFlow(input);
-  // The flow returns questions matching AIQuestionOutputSchema.
-  // Points and imageUrl (if any) would be added by the client or another layer.
-  // For now, we cast as Question[], assuming points will be added later by game logic.
-  return { questions: flowResult.questions as Question[] };
+  return { questions: flowResult.questions };
 }
 
+// Prompt definition for Genkit
 const triviaQuestionsPrompt = ai.definePrompt({
   name: 'generateTriviaQuestionsPrompt',
   input: {schema: GenerateTriviaQuestionsInputSchema},
-  output: {schema: GenerateTriviaQuestionsOutputSchema},
+  output: {schema: AIGeneratedTriviaOutputSchema},
   config: {
     temperature: 0.95, // Higher temperature for more varied, creative responses
   },
@@ -91,22 +90,22 @@ const triviaQuestionsPrompt = ai.definePrompt({
   `,
 });
 
+// Genkit flow definition
 const generateTriviaQuestionsFlow = ai.defineFlow(
   {
     name: 'generateTriviaQuestionsFlow',
     inputSchema: GenerateTriviaQuestionsInputSchema,
-    // The flow's direct output (before points are added by client) uses AIQuestionOutputSchema structure for its questions.
-    outputSchema: z.object({ questions: z.array(AIQuestionOutputSchema) }),
+    outputSchema: z.object({ questions: z.array(GeneratedQuestionSchema) }), // Flow directly outputs questions matching GeneratedQuestionSchema
   },
   async (input) => {
     let promptResult;
-    let aiOutput: AIResponseType | null | undefined = null;
+    let rawAiOutputFromPrompt: AIGeneratedTriviaData | null | undefined = null;
 
     try {
       promptResult = await triviaQuestionsPrompt(input);
-      aiOutput = promptResult.output; // output can be null if Zod parsing by Genkit failed or AI returned nothing matching schema
+      rawAiOutputFromPrompt = promptResult.output; 
 
-      if (!aiOutput) {
+      if (!rawAiOutputFromPrompt) {
         let errorDetails = "AI prompt returned no structured output. The AI response might be malformed, empty, or failed Zod parsing internally by Genkit.";
         if (promptResult && (promptResult as any).candidates && (promptResult as any).candidates[0]?.finishReason) {
             errorDetails += ` Finish Reason: ${(promptResult as any).candidates[0].finishReason}.`;
@@ -119,12 +118,10 @@ const generateTriviaQuestionsFlow = ai.defineFlow(
       }
 
     } catch (e: any) {
-      // This catch block handles errors from `triviaQuestionsPrompt` (e.g., LLM API errors)
-      // or if Zod parsing by Genkit itself failed and threw an error.
       console.error('[generateTriviaQuestionsFlow] Critical error during AI prompt execution or initial parsing. Input:', JSON.stringify(input, null, 2), 'Error:', e);
       
       let errorMessage = 'AI prompt execution failed or returned malformed data.';
-      if (e instanceof z.ZodError) {
+      if (e instanceof z.ZodError) { // Corrected ZodError check
         errorMessage = `AI output failed Zod validation: ${e.errors.map(err => `${err.path.join('.')} - ${err.message}`).join(', ')}`;
         console.error('[generateTriviaQuestionsFlow] Zod validation issues (details):', JSON.stringify(e.errors, null, 2));
       } else if (e instanceof Error) {
@@ -133,22 +130,19 @@ const generateTriviaQuestionsFlow = ai.defineFlow(
       throw new Error(`AI Flow Error: ${errorMessage}`);
     }
     
-    // At this point, aiOutput should be valid as per GenerateTriviaQuestionsOutputSchema,
-    // but we perform additional checks for robustness.
-    if (!aiOutput.questions || !Array.isArray(aiOutput.questions)) {
-      console.error('[generateTriviaQuestionsFlow] AI output for "questions" is not an array, even after initial Genkit parsing. Input:', JSON.stringify(input, null, 2), 'Received Output:', JSON.stringify(aiOutput, null, 2));
+    if (!rawAiOutputFromPrompt.questions || !Array.isArray(rawAiOutputFromPrompt.questions)) {
+      console.error('[generateTriviaQuestionsFlow] AI output for "questions" is not an array, even after initial Genkit parsing. Input:', JSON.stringify(input, null, 2), 'Received Output:', JSON.stringify(rawAiOutputFromPrompt, null, 2));
       throw new Error('AI returned malformed data: "questions" field was not an array.');
     }
 
-    if (aiOutput.questions.length === 0 && input.numberOfQuestions > 0) {
+    if (rawAiOutputFromPrompt.questions.length === 0 && input.numberOfQuestions > 0) {
       console.warn('[generateTriviaQuestionsFlow] AI returned an empty list of questions when questions were requested. Input:', JSON.stringify(input, null, 2));
-      // Depending on requirements, you might throw an error here. For now, an empty array will pass through to be handled by subsequent checks.
     }
     
     const validatedQuestions: (Omit<Question, 'points' | 'imageUrl'>)[] = [];
-    const questionIdsInSet = new Set<string>(); // To ensure IDs are unique *within this generated set*
+    const questionIdsInSet = new Set<string>();
 
-    for (const [index, qSource] of aiOutput.questions.entries()) {
+    for (const [index, qSource] of rawAiOutputFromPrompt.questions.entries()) {
       let currentQuestionForLog = `Question at index ${index}`;
       try {
         let questionId = qSource.id;
@@ -160,7 +154,7 @@ const generateTriviaQuestionsFlow = ai.defineFlow(
            questionId = `gen_q_dup_fallback_${index}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
         }
         questionIdsInSet.add(questionId);
-        currentQuestionForLog = `Question (ID: ${questionId})`; // Update for subsequent logs
+        currentQuestionForLog = `Question (ID: ${questionId})`;
 
         if (!qSource.text || typeof qSource.text !== 'string' || qSource.text.trim() === "") {
           throw new Error(`${currentQuestionForLog} has missing or empty text.`);
@@ -193,13 +187,15 @@ const generateTriviaQuestionsFlow = ai.defineFlow(
         validatedQuestions.push({
           id: questionId,
           text: qSource.text,
-          answers: qSource.answers.map(a => ({ text: a.text, isCorrect: a.isCorrect })), // Ensure answer structure
-          difficulty: questionDifficulty as Question['difficulty'], // Cast to the specific enum type
+          answers: qSource.answers.map(a => ({ text: a.text, isCorrect: a.isCorrect })),
+          difficulty: questionDifficulty as Question['difficulty'], 
         });
 
       } catch (validationError: any) {
-        console.warn(`[generateTriviaQuestionsFlow] Skipping question at index ${index} due to validation error: ${validationError.message}. Original data:`, JSON.stringify(qSource, (key, value) => typeof value === 'string' && value.length > 100 ? value.substring(0,100) + '...' : value, 2));
-        // Continue to next question, allowing other valid questions to pass
+        // Log validation error with truncated sensitive data
+        const safeQSource = JSON.stringify(qSource, (key, value) => 
+            typeof value === 'string' && value.length > 100 ? value.substring(0,100) + '...' : value, 2);
+        console.warn(`[generateTriviaQuestionsFlow] Skipping question at index ${index} due to validation error: ${validationError.message}. Original data (truncated):`, safeQSource);
       }
     }
 
@@ -215,7 +211,3 @@ const generateTriviaQuestionsFlow = ai.defineFlow(
     return { questions: validatedQuestions };
   }
 );
-
-    
-
-    

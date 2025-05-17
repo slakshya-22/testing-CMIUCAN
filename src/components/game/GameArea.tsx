@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState, useCallback } from "react"; // Added useCallback
+import { useEffect, useState, useCallback } from "react";
 import { useGameState } from "@/hooks/use-game-state";
 import { useTimer } from "@/hooks/use-timer";
 import { QuestionDisplay } from "./QuestionDisplay";
@@ -68,7 +68,7 @@ export function GameArea({ gameMode, gameCategory }: GameAreaProps) {
   useEffect(() => {
     if (gameStatus === "playing" && currentQuestion && !isAnswerRevealed) { 
       if (!isRunning) { 
-        resetTimer();
+        resetTimer(); // Ensure timer is reset for the new question
         startTimer();
       }
     } else if ((gameStatus !== "playing" || isAnswerRevealed) && isRunning) {
@@ -86,7 +86,7 @@ export function GameArea({ gameMode, gameCategory }: GameAreaProps) {
 
   const handleConfirmQuit = useCallback(() => {
     router.push('/');
-    setIsQuitConfirmOpen(false); // Close dialog after navigation
+    setIsQuitConfirmOpen(false);
   }, [router]);
 
   const handleCloseGameOverRedirect = useCallback(() => {
@@ -153,7 +153,7 @@ export function GameArea({ gameMode, gameCategory }: GameAreaProps) {
                 key={`${currentQuestion.id}-answer-${answer.text}-${index}`} 
                 answer={answer}
                 onClick={() => handleSelectAnswer(answer)}
-                isSelected={selectedAnswer?.text === answer.text && selectedAnswer?.isCorrect === answer.isCorrect}
+                isSelected={selectedAnswer?.text === answer.text && selectedAnswer?.isCorrect === answer.isCorrect} // Compare based on text and correctness
                 isCorrect={answer.isCorrect}
                 isRevealed={isAnswerRevealed}
                 disabled={isAnswerRevealed || gameStatus === "game_over" || gameStatus === "game_won" || gameStatus === "answered" || gameStatus === "loading_questions" || gameStatus === "error_loading_questions"}
@@ -198,7 +198,7 @@ export function GameArea({ gameMode, gameCategory }: GameAreaProps) {
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel onClick={() => setIsQuitConfirmOpen(false)}>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleConfirmQuit}>
+              <AlertDialogAction onClick={handleConfirmQuit} className="bg-destructive hover:bg-destructive/90">
                 Confirm Quit
               </AlertDialogAction>
             </AlertDialogFooter>
