@@ -2,10 +2,17 @@
 "use client";
 
 import Link from 'next/link';
-import { Brain, Github, Instagram, Linkedin } from 'lucide-react'; // Added social icons
+import { Brain, Github, Instagram, Linkedin } from 'lucide-react';
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
+  const contributors = [
+    "Nupur Panwar",
+    "Pranjal Kumar Rai",
+    "Junjaram Choudhary",
+    "Gaurav Gehlot",
+    "Lakshya Sharma"
+  ];
 
   return (
     <footer className="border-t border-border/60 bg-background/80 backdrop-blur-sm mt-auto">
@@ -19,7 +26,7 @@ export function Footer() {
             </Link>
         </div>
         <div className="flex justify-center space-x-5 my-4">
-          <a href="#" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors duration-300">
+          <a href="https://github.com/Lakshyasharma0410" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors duration-300">
             <Github className="h-6 w-6" />
             <span className="sr-only">GitHub</span>
           </a>
@@ -27,15 +34,20 @@ export function Footer() {
             <Instagram className="h-6 w-6" />
             <span className="sr-only">Instagram</span>
           </a>
-          <a href="#" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors duration-300">
+          <a href="https://www.linkedin.com/in/lakshya-sharma-448064229/" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors duration-300">
             <Linkedin className="h-6 w-6" />
             <span className="sr-only">LinkedIn</span>
           </a>
         </div>
-        <p className="text-xs sm:text-sm">
-          Created with ❤️ by: Nupur Panwar, Pranjal Kumar Rai, Junjaram Choudhary, Gaurav Gehlot, Lakshya Sharma
-        </p>
-        <p className="text-xs mt-1">
+        <div className="text-xs sm:text-sm">
+          Created with ❤️ by:
+          <div className="mt-1">
+            {contributors.map((name, index) => (
+              <span key={index} className="block">{name}</span>
+            ))}
+          </div>
+        </div>
+        <p className="text-xs mt-2">
           &copy; {currentYear} All rights reserved.
         </p>
       </div>

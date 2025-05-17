@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useGameState } from "@/hooks/use-game-state";
 import { useTimer } from "@/hooks/use-timer";
 import { QuestionDisplay } from "./QuestionDisplay";
@@ -11,12 +11,22 @@ import { ScoreDisplay } from "./ScoreDisplay";
 import { LifelinePanel } from "./LifelinePanel";
 import { GameOverDialog } from "./GameOverDialog";
 import { Button } from "@/components/ui/button";
-import { Brain, RefreshCw, AlertTriangle, LogOut, Home as HomeIcon } from "lucide-react"; // Changed Loader2 to Brain, added LogOut and HomeIcon
+import { CreativeLoader } from "@/components/ui/creative-loader";
+import { RefreshCw, AlertTriangle, LogOut, Home as HomeIcon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
-// useAuth import removed as user is passed down or not directly needed here for quit
 import { useRouter } from "next/navigation";
-
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface GameAreaProps {
   gameMode: string;
@@ -25,6 +35,7 @@ interface GameAreaProps {
 
 export function GameArea({ gameMode, gameCategory }: GameAreaProps) {
   const router = useRouter();
+  const [isQuitConfirmOpen, setIsQuitConfirmOpen] = useState(false);
   const {
     currentQuestion,
     currentQuestionIndex,
@@ -77,10 +88,7 @@ export function GameArea({ gameMode, gameCategory }: GameAreaProps) {
   if (gameStatus === "idle" || gameStatus === "loading_questions") { 
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)] p-4">
-        <Brain className="h-12 w-12 sm:h-16 sm:w-16 animate-pulse text-primary" /> {/* Changed Loader2 to Brain and added animate-pulse */}
-        <p className="ml-4 text-xl sm:text-2xl text-muted-foreground mt-4">
-          {gameStatus === "idle" ? "Initializing Game..." : "Generating fresh questions with AI, please wait..."}
-        </p>
+        <CreativeLoader text={gameStatus === "idle" ? "Initializing Game..." : "Generating fresh questions with AI..."} />
         {gameStatus === "loading_questions" && (
           <p className="text-sm text-muted-foreground/70 mt-2">(This might take a few moments)</p>
         )}
@@ -113,8 +121,7 @@ export function GameArea({ gameMode, gameCategory }: GameAreaProps) {
   if (!currentQuestion && (gameStatus === "playing" || gameStatus === "answered")) { 
      return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)] p-4 text-center">
-        <Brain className="h-12 w-12 sm:h-16 sm:w-16 animate-pulse text-primary" /> {/* Changed Loader2 to Brain and added animate-pulse */}
-        <p className="ml-4 text-lg sm:text-xl text-muted-foreground mt-4">Loading question...</p>
+        <CreativeLoader text="Loading question..." />
       </div>
     );
   }
@@ -140,7 +147,7 @@ export function GameArea({ gameMode, gameCategory }: GameAreaProps) {
                 isSelected={selectedAnswer?.text === answer.text && selectedAnswer?.isCorrect === answer.isCorrect}
                 isCorrect={answer.isCorrect}
                 isRevealed={isAnswerRevealed}
-                disabled={isAnswerRevealed || gameStatus === "game_over" || gameStatus === "answered" || gameStatus === "loading_questions" || gameStatus === "error_loading_questions"}
+                disabled={isAnswerRevealed || gameStatus === "game_over" || gameStatus === "game_won" || gameStatus === "answered" || gameStatus === "loading_questions" || gameStatus === "error_loading_questions"}
               />
             ))}
           </CardContent>
@@ -160,21 +167,40 @@ export function GameArea({ gameMode, gameCategory }: GameAreaProps) {
             isAudiencePollUsed={isAudiencePollUsed}
             onAudiencePollUsed={useAudiencePoll}
             audiencePollResults={audiencePollResults}
-            disabled={isAnswerRevealed || gameStatus === "game_over" || gameStatus === "answered" || gameStatus === "loading_questions" || gameStatus === "error_loading_questions"}
+            disabled={isAnswerRevealed || gameStatus === "game_over" || gameStatus === "game_won" || gameStatus === "answered" || gameStatus === "loading_questions" || gameStatus === "error_loading_questions"}
           />
         )}
-        <Button 
-          variant="outline" 
-          className="w-full border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive-foreground"
-          onClick={() => router.push('/')}
-          disabled={gameStatus === "loading_questions" || gameStatus === "error_loading_questions"}
-        >
-          <LogOut className="mr-2 h-5 w-5" /> Quit Game
-        </Button>
+        <AlertDialog open={isQuitConfirmOpen} onOpenChange={setIsQuitConfirmOpen}>
+          <AlertDialogTrigger asChild>
+            <Button 
+              variant="outline" 
+              className="w-full border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive-foreground"
+              disabled={gameStatus === "loading_questions" || gameStatus === "error_loading_questions"}
+              onClick={() => setIsQuitConfirmOpen(true)}
+            >
+              <LogOut className="mr-2 h-5 w-5" /> Quit Game
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                If you quit now, your current game progress will be lost.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={() => router.push('/')}>
+                Confirm Quit
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
 
       <GameOverDialog
-        isOpen={gameStatus === "game_over"}
+        isOpen={gameStatus === "game_over" || gameStatus === "game_won"}
+        isWinner={gameStatus === "game_won"}
         score={score}
         timeTakenMs={timeTakenMs}
         onPlayAgain={() => startGame(gameMode, gameCategory)}

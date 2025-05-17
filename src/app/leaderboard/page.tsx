@@ -13,12 +13,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trophy, Loader2, Medal, Clock } from "lucide-react"; // Added Clock icon
+import { Trophy, Medal, Clock } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { firestore } from "@/lib/firebase/config";
 import { collection, query, orderBy, limit, getDocs, Timestamp } from "firebase/firestore";
+import { CreativeLoader } from "@/components/ui/creative-loader";
 
 // Helper function to format milliseconds into MM:SS
 const formatTimeTaken = (ms: number | undefined): string => {
@@ -84,7 +85,7 @@ export default function LeaderboardPage() {
             score: data.score || 0,
             date: dateStr,
             timestampMillis: data.timestamp instanceof Timestamp ? data.timestamp.toMillis() : (data.timestamp ? ((data.timestamp as any).seconds * 1000) : undefined),
-            timeTakenMs: data.timeTakenMs, // Add timeTakenMs
+            timeTakenMs: data.timeTakenMs,
           });
         });
         console.log("[LeaderboardPage] Successfully fetched and processed scores:", fetchedScores.length, "entries.");
@@ -108,8 +109,7 @@ export default function LeaderboardPage() {
   if (isLoading) {
     return (
       <div className="flex flex-col justify-center items-center min-h-[calc(100vh-12rem)] p-4">
-        <Loader2 className="h-12 w-12 sm:h-16 sm:w-16 animate-spin text-primary" />
-        <p className="ml-4 text-lg sm:text-xl text-muted-foreground mt-4">Loading leaderboard...</p>
+        <CreativeLoader text="Loading leaderboard..." />
       </div>
     );
   }
@@ -164,7 +164,7 @@ export default function LeaderboardPage() {
                   <TableHead className="w-[60px] sm:w-[80px] text-center text-accent font-semibold text-sm sm:text-base">Rank</TableHead>
                   <TableHead className="text-accent font-semibold text-sm sm:text-base">Name</TableHead>
                   <TableHead className="text-right text-accent font-semibold text-sm sm:text-base">Score</TableHead>
-                  <TableHead className="text-right text-accent font-semibold text-sm sm:text-base hidden sm:table-cell">Time</TableHead> {/* Time column */}
+                  <TableHead className="text-right text-accent font-semibold text-sm sm:text-base hidden sm:table-cell">Time</TableHead>
                   <TableHead className="text-right hidden md:table-cell text-accent font-semibold text-sm sm:text-base">Date</TableHead>
                 </TableRow>
               </TableHeader>
@@ -186,7 +186,7 @@ export default function LeaderboardPage() {
                     <TableCell className="text-right font-semibold text-primary text-sm sm:text-base">
                       {entry.score.toLocaleString()}
                     </TableCell>
-                    <TableCell className="text-right text-muted-foreground text-xs sm:text-sm hidden sm:table-cell"> {/* Time cell */}
+                    <TableCell className="text-right text-muted-foreground text-xs sm:text-sm hidden sm:table-cell">
                       <div className="flex items-center justify-end">
                         <Clock className="h-3.5 w-3.5 mr-1 opacity-70"/> 
                         {formatTimeTaken(entry.timeTakenMs)}

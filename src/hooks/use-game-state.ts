@@ -13,7 +13,7 @@ import { useAuth } from '@/context/AuthContext';
 const INITIAL_TIMER_DURATION = 30;
 const TOTAL_QUESTIONS_IN_GAME = 15;
 
-export type GameStatus = "idle" | "loading_questions" | "playing" | "answered" | "game_over" | "error_loading_questions";
+export type GameStatus = "idle" | "loading_questions" | "playing" | "answered" | "game_over" | "game_won" | "error_loading_questions";
 
 const shuffleArray = <T,>(array: T[]): T[] => {
   const newArray = [...array];
@@ -59,24 +59,18 @@ export function useGameState() {
       setCurrentQuestionIndex((prevIndex) => prevIndex + 1);
       setGameStatus("playing");
     } else {
-      const endTime = Date.now();
-      setGameEndTime(endTime);
-      toast({
-        title: "Congratulations!",
-        description: `You've answered all ${questions.length} questions and your final score is ${score.toLocaleString()} points!`,
-        variant: "default",
-        duration: 5000,
-      });
-      setGameStatus("game_over");
+      // This case means they answered the LAST question correctly
+      // This is handled by handleSelectAnswer to set game_won
+      console.log("Attempted to go beyond the last question - should be handled by game_won status.");
     }
-  }, [currentQuestionIndex, questions, score, toast]);
+  }, [currentQuestionIndex, questions]);
 
 
   const handleSelectAnswer = useCallback((answer: AnswerType) => {
-    if (isAnswerRevealed || gameStatus !== "playing") return;
+    if (isAnswerRevealed || (gameStatus !== "playing" && gameStatus !== "answered")) return; // Allow processing if "answered" to go to next state
     setSelectedAnswer(answer);
     setIsAnswerRevealed(true);
-    setGameStatus("answered");
+    setGameStatus("answered"); 
 
     let newScore = score;
     if (answer.isCorrect) {
@@ -88,6 +82,20 @@ export function useGameState() {
         variant: "default",
         duration: 2000,
       });
+
+      // Check if it was the last question
+      if (currentQuestionIndex === questions.length - 1) {
+        const endTime = Date.now();
+        setGameEndTime(endTime);
+        setGameStatus("game_won"); // Player has won the game!
+        toast({
+          title: "YOU'VE WON!",
+          description: `Amazing! You answered all ${questions.length} questions correctly! Final Score: ${newScore.toLocaleString()}`,
+          variant: "default",
+          duration: 8000,
+        });
+        return; // Stop further processing for next question
+      }
     } else {
       const endTime = Date.now();
       setGameEndTime(endTime);
@@ -99,19 +107,21 @@ export function useGameState() {
       });
     }
 
+    // Timeout to show correctness before moving to next question or game over
     setTimeout(() => {
       if (!answer.isCorrect) {
         setGameStatus("game_over");
-      } else {
+      } else if (gameStatus !== "game_won") { // If not already won
         goToNextQuestion();
       }
     }, answer.isCorrect ? 2000 : 4000);
 
-  }, [isAnswerRevealed, gameStatus, currentQuestion, score, toast, goToNextQuestion]);
+  }, [isAnswerRevealed, gameStatus, currentQuestion, score, toast, goToNextQuestion, currentQuestionIndex, questions.length]);
 
   const loadQuestions = useCallback(async (mode?: string, category?: string) => {
     setGameStatus("loading_questions");
-    setQuestions([]);
+    setQuestions([]); // Clear old questions
+    setDisplayedAnswers([]);
     try {
       const input: GenerateTriviaQuestionsInput = {
         numberOfQuestions: TOTAL_QUESTIONS_IN_GAME,
@@ -130,15 +140,15 @@ export function useGameState() {
 
       const questionsWithPoints = aiResult.questions.map((q, index) => ({
         ...q,
-        points: KBC_POINTS[index] || KBC_POINTS[KBC_POINTS.length - 1],
+        points: KBC_POINTS[index] || KBC_POINTS[KBC_POINTS.length - 1], // Assign points based on KBC progression
         id: q.id || `gen_q_client_fallback_${index}_${Date.now()}`
       }));
 
       setQuestions(questionsWithPoints);
       if (questionsWithPoints.length > 0) {
         setGameStatus("playing");
-        setGameStartTime(Date.now()); // Start game timer
-        setGameEndTime(null); // Reset end time
+        setGameStartTime(Date.now());
+        setGameEndTime(null);
         if (questionsWithPoints.length < TOTAL_QUESTIONS_IN_GAME) {
           toast({
             title: "Fewer Questions Loaded",
@@ -184,10 +194,10 @@ export function useGameState() {
     setIsFiftyFiftyUsed(false);
     setIsAudiencePollUsed(false);
     setAudiencePollResults(null);
-    setQuestions([]); // Clear old questions
-    setDisplayedAnswers([]); // Clear displayed answers for a new game
-    setGameStartTime(null); // Reset game start time
-    setGameEndTime(null); // Reset game end time
+    setQuestions([]); 
+    setDisplayedAnswers([]); 
+    setGameStartTime(null); 
+    setGameEndTime(null); 
     loadQuestions(mode, category);
   }, [loadQuestions]);
 
@@ -197,8 +207,7 @@ export function useGameState() {
     } else if (gameStatus === "playing" && questions.length > 0 && !currentQuestion) {
         console.warn("[useGameState] Game is 'playing' but currentQuestion is null. This might indicate an issue with question indexing or an empty question set post-load.");
         setDisplayedAnswers([]);
-    } else if (gameStatus !== "playing") {
-        // Also clear if not playing, e.g., on game over or idle
+    } else if (gameStatus !== "playing" && gameStatus !== "answered") {
         setDisplayedAnswers([]);
     }
   }, [currentQuestion, gameStatus, questions]);
@@ -242,7 +251,7 @@ export function useGameState() {
     if (!currentQuestion || isAudiencePollUsed) return;
 
     const results: Record<string, number> = {};
-    const optionsForPoll = [...displayedAnswers]; // Use current displayed answers for the poll
+    const optionsForPoll = [...displayedAnswers];
     const correctAnswerInFullSet = currentQuestion.answers.find(a => a.isCorrect);
 
     if (!correctAnswerInFullSet) {
@@ -256,7 +265,6 @@ export function useGameState() {
     let correctAnswerPercentage = 0;
 
     if (isCorrectAnswerDisplayed) {
-        // Assign a higher probability to the correct answer
         correctAnswerPercentage = Math.floor(Math.random() * 31) + 40; // 40-70%
         results[correctAnswerText] = correctAnswerPercentage;
         totalPercentage -= correctAnswerPercentage;
@@ -264,12 +272,10 @@ export function useGameState() {
 
     const otherOptions = optionsForPoll.filter(opt => opt.text !== correctAnswerText);
 
-    // Distribute remaining percentage among other displayed options
     otherOptions.forEach((option, index) => {
-      if (index === otherOptions.length - 1) { // Last option gets the remainder
+      if (index === otherOptions.length - 1) { 
         results[option.text] = Math.max(0, totalPercentage);
       } else {
-        // Max percentage this option can take without making sum > 100 or leaving nothing for subsequent
         const maxForThisOption = Math.max(0, totalPercentage - (otherOptions.length - 1 - index)); 
         const randomPercentage = Math.floor(Math.random() * (maxForThisOption + 1));
         const assignedPercentage = Math.min(randomPercentage, totalPercentage);
@@ -278,33 +284,26 @@ export function useGameState() {
       }
     });
     
-    // Ensure all displayed options have a poll result, even if 0
     optionsForPoll.forEach(opt => {
         if (!(opt.text in results)) {
-            results[opt.text] = 0; // If not assigned, means it should be 0
+            results[opt.text] = 0;
         }
     });
 
-
-    // Final normalization to ensure sum is exactly 100%
     let currentSum = Object.values(results).reduce((acc, val) => acc + val, 0);
     if (currentSum !== 100 && optionsForPoll.length > 0) {
-        // Try to adjust the correct answer's percentage if it's displayed
         const optionToAdjust = optionsForPoll.find(opt => opt.text === correctAnswerText && isCorrectAnswerDisplayed) || optionsForPoll[0];
         if (optionToAdjust && results[optionToAdjust.text] !== undefined) {
              results[optionToAdjust.text] = Math.max(0, Math.min(100, results[optionToAdjust.text] + (100 - currentSum)));
         }
     }
-    // If still not 100 (e.g. correct answer wasn't displayed or first option adjustment wasn't enough)
-    // do a final pass to force sum to 100, typically by adjusting the largest or first value
     currentSum = Object.values(results).reduce((acc, val) => acc + val, 0);
     if (currentSum !== 100 && optionsForPoll.length > 0) {
         const firstKey = optionsForPoll[0].text;
-        if (results[firstKey] !== undefined) { // Should always be true if optionsForPoll is not empty
+        if (results[firstKey] !== undefined) { 
            results[firstKey] = Math.max(0, Math.min(100, results[firstKey] + (100 - currentSum)));
         }
     }
-
 
     setAudiencePollResults(results);
     setIsAudiencePollUsed(true);
@@ -339,7 +338,7 @@ export function useGameState() {
             if (score > existingData.score) {
                 shouldWrite = true;
                 message = `New high score of ${score.toLocaleString()} saved! Previous: ${existingData.score.toLocaleString()}.`;
-            } else if (score === existingData.score && timeTaken < existingData.timeTakenMs) {
+            } else if (score === existingData.score && (timeTaken < existingData.timeTakenMs || !existingData.timeTakenMs)) {
                 shouldWrite = true;
                 message = `Score of ${score.toLocaleString()} matches previous, but with a faster time! (${(timeTaken / 1000).toFixed(2)}s vs ${(existingData.timeTakenMs / 1000).toFixed(2)}s).`;
             } else {
@@ -373,11 +372,11 @@ export function useGameState() {
                 duration: 4000,
             });
         }
-    } catch (error) {
+    } catch (error: any) {
         console.error("[saveScore] Error saving score to Firestore: ", error);
         toast({
             title: "Error Saving Score",
-            description: "Could not save your score to the global leaderboard. Please try again.",
+            description: `Could not save your score. Error: ${error.message || 'Unknown error'}`,
             variant: "destructive",
         });
     }
