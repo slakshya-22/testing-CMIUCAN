@@ -4,7 +4,7 @@
 import Link from "next/link";
 import { Trophy, Brain, Play, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetClose, SheetTitle, SheetDescription } from "@/components/ui/sheet"; // Added SheetTitle, SheetDescription
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -58,6 +58,8 @@ export function Header() {
               </Button>
             </SheetTrigger>
             <SheetContent side="right" className="w-[280px] p-6 bg-background">
+              <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
+              <SheetDescription className="sr-only">Main navigation links for the site.</SheetDescription>
               <div className="flex flex-col space-y-4">
                 <Link href="/" className="flex items-center space-x-2 group mb-6" onClick={() => setIsSheetOpen(false)}>
                   <Brain className="h-7 w-7 text-primary group-hover:text-accent transition-colors duration-300" />
