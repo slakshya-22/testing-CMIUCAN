@@ -32,7 +32,7 @@ export async function generateTriviaQuestions(input: GenerateTriviaQuestionsInpu
 const triviaQuestionsPrompt = ai.definePrompt({
   name: 'generateTriviaQuestionsPrompt',
   input: {schema: GenerateTriviaQuestionsInputSchema},
-  output: {schema: GenerateTriviaQuestionsOutputSchema},
+  output: {schema: GenerateTriviaQuestionsOutputSchema}, // Genkit will attempt to parse AI output to this schema
   prompt: `You are a trivia question generator for a game show.
   Generate {{{numberOfQuestions}}} unique trivia questions.
 
@@ -51,7 +51,7 @@ const triviaQuestionsPrompt = ai.definePrompt({
   {{/if}}
 
   For each question, provide:
-  1. A unique 'id' (e.g., "q1", "q2", ... or a random string).
+  1. A unique 'id' (e.g., "q1", "q2", ... or a random string that is unique within this set of questions).
   2. The 'text' of the question.
   3. An array 'answers' containing exactly four objects, each with:
      - 'text': The answer option.
@@ -72,66 +72,94 @@ const generateTriviaQuestionsFlow = ai.defineFlow(
     outputSchema: GenerateTriviaQuestionsOutputSchema,
   },
   async (input) => {
+    let rawAiOutputFromPrompt; // Variable to store raw output for logging
     try {
-      const {output} = await triviaQuestionsPrompt(input);
+      const result = await triviaQuestionsPrompt(input);
+      rawAiOutputFromPrompt = result.output; // This is the Zod-parsed output from Genkit
 
-      if (!output || !output.questions || output.questions.length === 0) {
-        console.error('AI failed to generate any questions or returned an empty list. Input:', input, 'Raw Output:', output);
-        throw new Error('AI failed to generate questions or returned an empty list.');
+      if (!rawAiOutputFromPrompt) {
+        console.error('[generateTriviaQuestionsFlow] AI prompt execution failed to produce a structured output. Input:', input);
+        throw new Error('AI prompt execution failed to produce a structured output.');
       }
       
-      const validatedQuestions = output.questions.map((q, index) => {
+      // Defensive check: ensure questions is an array, even though Zod schema should guarantee it if parsing succeeded.
+      if (!Array.isArray(rawAiOutputFromPrompt.questions)) {
+        console.error('[generateTriviaQuestionsFlow] AI output for questions is not an array. Input:', input, 'Raw Output:', rawAiOutputFromPrompt);
+        throw new Error('AI returned malformed data for questions (expected an array).');
+      }
+
+      if (rawAiOutputFromPrompt.questions.length === 0 && input.numberOfQuestions > 0) {
+        console.warn('[generateTriviaQuestionsFlow] AI returned an empty list of questions despite being asked for some. Input:', input, 'Raw Output:', rawAiOutputFromPrompt);
+        throw new Error('AI returned an empty list of questions.');
+      }
+      
+      const validatedQuestions = rawAiOutputFromPrompt.questions.map((q, index) => {
+        // Since Genkit parsed against QuestionSchema, q should largely conform.
+        // We perform additional logical validation or assign fallbacks.
         let questionId = q.id;
         if (!questionId || typeof questionId !== 'string' || questionId.trim() === "") {
-           console.warn(`Generated question at index ${index} has a missing or invalid ID. Assigning a fallback. Original ID: ${q.id}`);
+           console.warn(`[generateTriviaQuestionsFlow] Generated question at index ${index} has a missing or invalid ID. Assigning a fallback. Original ID: ${q.id}`);
            questionId = `gen_q_fallback_${index}_${Date.now()}`;
         }
 
         if (!q.text || typeof q.text !== 'string' || q.text.trim() === "") {
-          console.error(`Generated question (ID: ${questionId}) at index ${index} has missing or empty text.`);
+          console.error(`[generateTriviaQuestionsFlow] Generated question (ID: ${questionId}) at index ${index} has missing or empty text.`);
+          // This should ideally be caught by Zod, but as a safeguard:
           throw new Error(`Generated question (ID: ${questionId}) has missing or empty text.`);
         }
 
         if (!q.answers || !Array.isArray(q.answers) || q.answers.length !== 4) {
-          console.error(`Generated question "${q.text}" (ID: ${questionId}) must have exactly four answers, found ${q.answers?.length || 0}.`);
+          console.error(`[generateTriviaQuestionsFlow] Generated question "${q.text}" (ID: ${questionId}) must have exactly four answers, found ${q.answers?.length || 0}.`);
           throw new Error(`Generated question "${q.text}" (ID: ${questionId}) must have exactly four answers.`);
         }
 
         const correctAnswers = q.answers.filter(a => a.isCorrect === true).length;
         if (correctAnswers !== 1) {
-          console.error(`Generated question "${q.text}" (ID: ${questionId}) must have exactly one correct answer, found ${correctAnswers}.`);
+          console.error(`[generateTriviaQuestionsFlow] Generated question "${q.text}" (ID: ${questionId}) must have exactly one correct answer, found ${correctAnswers}.`);
           throw new Error(`Generated question "${q.text}" (ID: ${questionId}) must have exactly one correct answer.`);
         }
         
         let questionDifficulty = q.difficulty;
         if (!questionDifficulty || !["Easy", "Medium", "Hard", "Very Hard"].includes(questionDifficulty)) {
-           console.warn(`Generated question "${q.text}" (ID: ${questionId}) has an invalid or missing difficulty "${questionDifficulty}". Defaulting to "Medium".`);
-           questionDifficulty = "Medium";
+           console.warn(`[generateTriviaQuestionsFlow] Generated question "${q.text}" (ID: ${questionId}) has an invalid or missing difficulty "${questionDifficulty}". Defaulting to "Medium".`);
+           questionDifficulty = "Medium"; // Default if missing or invalid
         }
         
-        return { ...q, id: questionId, difficulty: questionDifficulty };
+        // Ensure all answer options have text
+        q.answers.forEach((ans, ansIdx) => {
+            if (!ans.text || typeof ans.text !== 'string' || ans.text.trim() === '') {
+                throw new Error(`Answer option ${ansIdx + 1} for question "${q.text}" (ID: ${questionId}) is missing text.`);
+            }
+        });
+
+        return { ...q, id: questionId, difficulty: questionDifficulty as "Easy" | "Medium" | "Hard" | "Very Hard" };
       });
 
-      if (validatedQuestions.length === 0) {
-        console.error('All questions generated by AI failed validation. Input:', input, 'Raw Output:', output);
-        throw new Error('AI generated questions, but none passed validation.');
+      if (validatedQuestions.length === 0 && input.numberOfQuestions > 0) {
+        console.error('[generateTriviaQuestionsFlow] All questions generated by AI failed validation, or no questions were generated initially. Input:', input, 'Raw Output from AI:', rawAiOutputFromPrompt);
+        throw new Error('AI generated questions, but none passed validation, or no questions were returned.');
       }
       
       if (validatedQuestions.length < input.numberOfQuestions) {
-        console.warn(`AI generated fewer valid questions (${validatedQuestions.length}) than requested (${input.numberOfQuestions}). Input:`, input);
+        console.warn(`[generateTriviaQuestionsFlow] AI generated fewer valid questions (${validatedQuestions.length}) than requested (${input.numberOfQuestions}). Input:`, input);
       }
 
       return { questions: validatedQuestions };
 
     } catch (error: any) {
       console.error('[generateTriviaQuestionsFlow] Error during question generation or validation:', error);
+      // Log the raw output if available and an error occurred
+      if (rawAiOutputFromPrompt) {
+        console.error('[generateTriviaQuestionsFlow] Raw AI output (parsed by Genkit) at time of error:', JSON.stringify(rawAiOutputFromPrompt, null, 2));
+      }
       if (error instanceof ZodError) {
-        console.error('[generateTriviaQuestionsFlow] Zod validation issues:', error.issues);
-        throw new Error(`AI returned data in an unexpected format. Details: ${error.issues.map(issue => `${issue.path.join('.')} - ${issue.message}`).join(', ')}`);
+        console.error('[generateTriviaQuestionsFlow] Zod validation issues (likely from AI output structure):', error.issues);
+        // Construct a more user-friendly message from Zod issues
+        const zodIssuesMessage = error.issues.map(issue => `${issue.path.join('.')} - ${issue.message}`).join('; ');
+        throw new Error(`AI returned data in an unexpected format. Details: ${zodIssuesMessage}`);
       }
       // Re-throw the error to be caught by the calling client
       throw new Error(error.message || 'An unexpected error occurred while generating questions.');
     }
   }
 );
-

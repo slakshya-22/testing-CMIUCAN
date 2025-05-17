@@ -82,14 +82,36 @@ export function GameArea({ gameMode, gameCategory }: GameAreaProps) {
       </div>
     );
   }
+
+  if (gameStatus === "error_loading_questions") {
+    return (
+     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)] p-4 text-center">
+       <AlertTriangle className="h-12 w-12 sm:h-16 sm:w-16 text-destructive mb-4" />
+       <p className="text-xl sm:text-2xl text-destructive-foreground font-semibold">Oops! Question Time Out!</p>
+       <p className="text-muted-foreground mt-2 mb-6 max-w-md">
+         We couldn't fetch new trivia questions from our AI. This can happen due to high server load or a temporary glitch.
+       </p>
+       <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 mt-4">
+           <Button onClick={() => startGame(gameMode, gameCategory)} className="bg-primary hover:bg-primary/90">
+               <RefreshCw className="mr-2 h-5 w-5" /> Try Again
+           </Button>
+           <Button variant="outline" asChild>
+               <Link href="/">
+                   <Home className="mr-2 h-5 w-5" /> Go Home
+               </Link>
+           </Button>
+       </div>
+     </div>
+   );
+ }
   
   if (!currentQuestion && (gameStatus === "playing" || gameStatus === "answered")) { 
      return (
-      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)] p-4">
-        <AlertTriangle className="h-12 w-12 sm:h-16 sm:w-16 text-destructive" />
-        <p className="ml-4 text-xl sm:text-2xl text-destructive-foreground mt-4">Error loading question.</p>
-        <p className="text-muted-foreground mt-2">There was an issue fetching the next question.</p>
-        <div className="flex space-x-4 mt-8">
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)] p-4 text-center">
+        <AlertTriangle className="h-12 w-12 sm:h-16 sm:w-16 text-destructive mb-4" />
+        <p className="text-xl sm:text-2xl text-destructive-foreground font-semibold">Error Loading Question</p>
+        <p className="text-muted-foreground mt-2 mb-6">There was an issue fetching the next question.</p>
+        <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 mt-4">
             <Button onClick={() => startGame(gameMode, gameCategory)} className="bg-primary hover:bg-primary/90">
                 <RefreshCw className="mr-2 h-5 w-5" /> Try Again
             </Button>
@@ -124,7 +146,7 @@ export function GameArea({ gameMode, gameCategory }: GameAreaProps) {
                 isSelected={selectedAnswer?.text === answer.text && selectedAnswer?.isCorrect === answer.isCorrect}
                 isCorrect={answer.isCorrect}
                 isRevealed={isAnswerRevealed}
-                disabled={isAnswerRevealed || gameStatus === "game_over" || gameStatus === "answered" || gameStatus === "loading_questions"}
+                disabled={isAnswerRevealed || gameStatus === "game_over" || gameStatus === "answered" || gameStatus === "loading_questions" || gameStatus === "error_loading_questions"}
               />
             ))}
           </CardContent>
@@ -144,7 +166,7 @@ export function GameArea({ gameMode, gameCategory }: GameAreaProps) {
             isAudiencePollUsed={isAudiencePollUsed}
             onAudiencePollUsed={useAudiencePoll}
             audiencePollResults={audiencePollResults}
-            disabled={isAnswerRevealed || gameStatus === "game_over" || gameStatus === "answered" || gameStatus === "loading_questions"}
+            disabled={isAnswerRevealed || gameStatus === "game_over" || gameStatus === "answered" || gameStatus === "loading_questions" || gameStatus === "error_loading_questions"}
           />
         )}
       </div>
