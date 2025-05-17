@@ -5,14 +5,15 @@ import { getAuth, type Auth } from "firebase/auth";
 // import { getFirestore } from "firebase/firestore";
 // import { getStorage } from "firebase/storage";
 
+// Your web app's Firebase configuration as provided
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
+  apiKey: "AIzaSyA1ro1aav-8QGVAJ0TAcKSnai5BRf-QZpE",
+  authDomain: "trivimaster-k8of6.firebaseapp.com",
+  projectId: "trivimaster-k8of6",
+  storageBucket: "trivimaster-k8of6.firebasestorage.app", // Used as provided
+  messagingSenderId: "489367812869",
+  appId: "1:489367812869:web:2db4b786b3d183ea7dd56c",
+  // measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID, // You might want to add this if you have it
 };
 
 // Initialize Firebase
