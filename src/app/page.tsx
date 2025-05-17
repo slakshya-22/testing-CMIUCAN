@@ -4,7 +4,7 @@
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import Image from "next/image";
-import { PlayCircle, Brain, Settings, ChevronRight, Tv, Sparkles, HelpCircle, Mail, Gamepad2, Workflow, Layers, Rocket, Trophy, Smartphone } from "lucide-react"; // Added Trophy and Smartphone
+import { PlayCircle, Brain, Settings, ChevronRight, Tv, Sparkles, HelpCircle, Mail, Gamepad2, Workflow, Layers, Rocket, Trophy, Smartphone, UserCircle, LogIn, Loader2 } from "lucide-react"; // Added Loader2
 import { useState } from "react";
 import {
   Select,
@@ -21,6 +21,8 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { useAuth } from "@/context/AuthContext"; // Import useAuth
+import { useRouter } from "next/navigation"; // Import useRouter
 
 type GameMode = "Mixed" | "Easy" | "Medium" | "Hard";
 type GameCategory = "General Knowledge" | "Sports" | "History" | "Geography" | "Science";
@@ -28,6 +30,8 @@ type GameCategory = "General Knowledge" | "Sports" | "History" | "Geography" | "
 export default function HomePage() {
   const [selectedMode, setSelectedMode] = useState<GameMode>("Mixed");
   const [selectedCategory, setSelectedCategory] = useState<GameCategory>("General Knowledge");
+  const { user, loading } = useAuth(); // Get auth state
+  const router = useRouter(); // Get router instance
 
   const gameModes: GameMode[] = ["Mixed", "Easy", "Medium", "Hard"];
   const gameCategories: GameCategory[] = [
@@ -66,6 +70,24 @@ export default function HomePage() {
     }
   ];
 
+  const handlePlayNowClick = () => {
+    if (!user && !loading) {
+      router.push(`/auth/signin?redirect=/play?mode=${selectedMode}&category=${encodeURIComponent(selectedCategory)}`); // Redirect to sign-in if not logged in
+    } else if (user) {
+      router.push(`/play?mode=${selectedMode}&category=${encodeURIComponent(selectedCategory)}`);
+    }
+    // If loading, button is typically disabled or does nothing until loading completes
+  };
+  
+  const handleConfigureAndPlayClick = () => {
+    if (!user && !loading) {
+      router.push('/auth/signin?redirect=/'); // Redirect to sign-in if not logged in, then user can reconfigure
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' }); // Scroll to top where settings are
+    }
+  };
+
+
   return (
     <div className="flex flex-col items-center text-center p-4 sm:p-6 md:p-8 space-y-16 sm:space-y-20 md:space-y-24">
       {/* Hero Section */}
@@ -74,6 +96,11 @@ export default function HomePage() {
         <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-4 sm:mb-6 bg-clip-text text-transparent bg-gradient-to-r from-primary via-accent to-secondary">
           Cash Me If You Can
         </h1>
+        {user && (
+          <p className="text-xl sm:text-2xl text-accent mb-4">
+            Welcome back, {user.displayName || user.email?.split('@')[0]}!
+          </p>
+        )}
         <p className="text-lg sm:text-xl text-muted-foreground mb-8 sm:mb-10 max-w-md md:max-w-lg">
           Step into the hot seat! Test your knowledge in this thrilling trivia game and climb the leaderboard.
         </p>
@@ -90,7 +117,7 @@ export default function HomePage() {
           <CardContent className="space-y-6 p-5 sm:p-6">
             <div className="grid gap-2 text-left">
               <Label htmlFor="game-mode" className="text-md font-medium text-foreground">Game Mode (Difficulty)</Label>
-              <Select value={selectedMode} onValueChange={(value) => setSelectedMode(value as GameMode)}>
+              <Select value={selectedMode} onValueChange={(value) => setSelectedMode(value as GameMode)} disabled={loading}>
                 <SelectTrigger id="game-mode" className="w-full text-base py-3 h-auto bg-input border-border focus:ring-primary">
                   <SelectValue placeholder="Select mode" />
                 </SelectTrigger>
@@ -106,7 +133,7 @@ export default function HomePage() {
 
             <div className="grid gap-2 text-left">
               <Label htmlFor="game-category" className="text-md font-medium text-foreground">Category</Label>
-              <Select value={selectedCategory} onValueChange={(value) => setSelectedCategory(value as GameCategory)}>
+              <Select value={selectedCategory} onValueChange={(value) => setSelectedCategory(value as GameCategory)} disabled={loading}>
                 <SelectTrigger id="game-category" className="w-full text-base py-3 h-auto bg-input border-border focus:ring-primary">
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
@@ -123,15 +150,22 @@ export default function HomePage() {
         </Card>
 
         <Button
-          asChild
+          onClick={handlePlayNowClick}
           size="lg"
           className="animate-bounce shadow-lg hover:shadow-primary/50 text-lg sm:text-xl px-8 sm:px-10 py-4 sm:py-5 group"
+          disabled={loading}
         >
-          <Link href={`/play?mode=${selectedMode}&category=${encodeURIComponent(selectedCategory)}`}>
-            <PlayCircle className="mr-2 h-6 w-6 sm:h-7 sm:w-7" /> Play Now
-            <ChevronRight className="ml-2 h-6 w-6 sm:h-7 sm:w-7 opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform group-hover:translate-x-1" />
-          </Link>
+          {loading && !user ? <Loader2 className="mr-2 h-6 w-6 animate-spin" /> : <PlayCircle className="mr-2 h-6 w-6 sm:h-7 sm:w-7" />}
+          Play Now
+          {!loading && <ChevronRight className="ml-2 h-6 w-6 sm:h-7 sm:w-7 opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform group-hover:translate-x-1" />}
         </Button>
+        {!user && !loading && (
+          <p className="mt-4 text-sm text-muted-foreground">
+            <Link href="/auth/signin" className="text-primary hover:underline flex items-center">
+              <LogIn className="mr-1 h-4 w-4" /> Sign in to play
+            </Link>
+          </p>
+        )}
         
         <div className="mt-10 sm:mt-12" data-ai-hint="game show stage lights">
           <Image
@@ -189,26 +223,33 @@ export default function HomePage() {
             <div className="flex items-start space-x-4">
               <div className="flex-shrink-0 w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold text-lg mt-1">1</div>
               <div>
+                <h4 className="font-semibold text-xl text-primary mb-1">Sign Up / Sign In</h4>
+                <p>Create an account or sign in to track your progress and appear on the leaderboard.</p>
+              </div>
+            </div>
+            <div className="flex items-start space-x-4">
+              <div className="flex-shrink-0 w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold text-lg mt-1">2</div>
+              <div>
                 <h4 className="font-semibold text-xl text-primary mb-1">Customize Your Challenge</h4>
                 <p>Select your preferred game mode (difficulty) and category before you start. Or, go with "Mixed" for a diverse experience!</p>
               </div>
             </div>
             <div className="flex items-start space-x-4">
-              <div className="flex-shrink-0 w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold text-lg mt-1">2</div>
+              <div className="flex-shrink-0 w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold text-lg mt-1">3</div>
               <div>
                 <h4 className="font-semibold text-xl text-primary mb-1">Answer & Ascend</h4>
                 <p>Tackle 15 questions, each more challenging and valuable than the last. Race against the clock to lock in your answers.</p>
               </div>
             </div>
             <div className="flex items-start space-x-4">
-              <div className="flex-shrink-0 w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold text-lg mt-1">3</div>
+              <div className="flex-shrink-0 w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold text-lg mt-1">4</div>
               <div>
                 <h4 className="font-semibold text-xl text-primary mb-1">Use Lifelines Wisely</h4>
                 <p>Feeling stuck? Utilize 50:50, Phone-A-Friend, or Audience Poll to gain an edge. But remember, each can only be used once!</p>
               </div>
             </div>
             <div className="flex items-start space-x-4">
-              <div className="flex-shrink-0 w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold text-lg mt-1">4</div>
+              <div className="flex-shrink-0 w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold text-lg mt-1">5</div>
               <div>
                 <h4 className="font-semibold text-xl text-primary mb-1">Climb the Leaderboard</h4>
                 <p>After your game, save your score and see how you rank against other trivia masters. Aim for the top spot!</p>
@@ -307,14 +348,12 @@ export default function HomePage() {
           The hot seat is waiting. Choose your settings above and start your journey to trivia stardom!
         </p>
         <Button
-          asChild
           size="lg"
           className="shadow-lg hover:shadow-primary/50 text-lg sm:text-xl px-8 sm:px-10 py-4 sm:py-5 group bg-gradient-to-r from-primary via-accent to-secondary hover:opacity-90 text-primary-foreground"
-          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} // Scrolls to top where settings are
+          onClick={handleConfigureAndPlayClick}
+          disabled={loading && !user} // Disable if loading and no user (to prevent premature scroll)
         >
-          <div> {/* Changed from Link to div for direct button action */}
             <PlayCircle className="mr-2 h-6 w-6 sm:h-7 sm:w-7" /> Configure & Play
-          </div>
         </Button>
       </section>
 
@@ -322,21 +361,7 @@ export default function HomePage() {
   );
 }
 
-interface FeatureCardProps {
-  icon: React.ElementType;
-  title: string;
-  description: string;
-}
-const FeatureCard = ({ icon: Icon, title, description }: FeatureCardProps) => (
-  <div className="flex flex-col items-center p-6 bg-card/50 rounded-lg shadow-lg border border-border hover:shadow-primary/20 transition-shadow duration-300">
-    <div className="p-3 bg-primary rounded-full mb-4">
-      <Icon className="h-8 w-8 text-primary-foreground" />
-    </div>
-    <h3 className="text-xl font-semibold text-foreground mb-2">{title}</h3>
-    <p className="text-muted-foreground text-sm">{description}</p>
-  </div>
-);
-
+// Removed unused FeatureCard component
     
 
     

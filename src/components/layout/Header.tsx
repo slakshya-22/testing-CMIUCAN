@@ -2,16 +2,18 @@
 "use client";
 
 import Link from "next/link";
-import { Trophy, Brain, Play, Menu } from "lucide-react";
+import { Trophy, Brain, Play, Menu, LogIn, LogOut, UserCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger, SheetClose, SheetTitle, SheetDescription } from "@/components/ui/sheet"; // Added SheetTitle, SheetDescription
+import { Sheet, SheetContent, SheetTrigger, SheetClose, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import { useAuth } from "@/context/AuthContext"; // Import useAuth
 
 export function Header() {
   const pathname = usePathname();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const { user, loading, signOut } = useAuth(); // Get auth state
 
   const navLinks = [
     { href: "/play", label: "Game", icon: Play },
@@ -46,6 +48,34 @@ export function Header() {
               </Button>
             </Link>
           ))}
+          {loading ? (
+             <Button variant="ghost" size="icon" disabled>
+                <Loader2 className="h-5 w-5 animate-spin" />
+             </Button>
+          ) : user ? (
+            <>
+              <span className="text-sm text-muted-foreground hidden lg:inline-block">
+                Hi, {user.displayName || user.email?.split('@')[0]}
+              </span>
+              <Button variant="outline" size="sm" onClick={signOut} className="border-primary text-primary hover:bg-primary/10">
+                <LogOut className="mr-1.5 h-4 w-4" />
+                Sign Out
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="ghost" asChild>
+                <Link href="/auth/signin">
+                  <LogIn className="mr-1.5 h-4 w-4" /> Sign In
+                </Link>
+              </Button>
+              <Button asChild className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                <Link href="/auth/signup">
+                  <UserCircle className="mr-1.5 h-4 w-4" /> Sign Up
+                </Link>
+              </Button>
+            </>
+          )}
         </nav>
 
         {/* Mobile Navigation (Hamburger) */}
@@ -60,8 +90,8 @@ export function Header() {
             <SheetContent side="right" className="w-[280px] p-6 bg-background">
               <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
               <SheetDescription className="sr-only">Main navigation links for the site.</SheetDescription>
-              <div className="flex flex-col space-y-4">
-                <Link href="/" className="flex items-center space-x-2 group mb-6" onClick={() => setIsSheetOpen(false)}>
+              <div className="flex flex-col space-y-3">
+                <Link href="/" className="flex items-center space-x-2 group mb-4" onClick={() => setIsSheetOpen(false)}>
                   <Brain className="h-7 w-7 text-primary group-hover:text-accent transition-colors duration-300" />
                   <span className="font-bold text-xl bg-clip-text text-transparent bg-gradient-to-r from-primary via-accent to-primary">
                     Cash Me If You Can
@@ -81,6 +111,39 @@ export function Header() {
                     </Link>
                   </SheetClose>
                 ))}
+                <hr className="my-2 border-border" />
+                {loading ? (
+                    <div className="flex justify-center py-2">
+                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                    </div>
+                ) : user ? (
+                  <>
+                    <div className="px-3 py-2 text-sm text-muted-foreground">
+                      Hi, {user.displayName || user.email?.split('@')[0]}
+                    </div>
+                    <Button variant="outline" onClick={() => { signOut(); setIsSheetOpen(false);}} className="w-full justify-start text-md py-3">
+                      <LogOut className="mr-3 h-5 w-5" />
+                      Sign Out
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <SheetClose asChild>
+                      <Link href="/auth/signin" passHref>
+                        <Button variant="ghost" className="w-full justify-start text-md py-3">
+                          <LogIn className="mr-3 h-5 w-5" /> Sign In
+                        </Button>
+                      </Link>
+                    </SheetClose>
+                    <SheetClose asChild>
+                      <Link href="/auth/signup" passHref>
+                        <Button variant="default" className="w-full justify-start text-md py-3">
+                          <UserCircle className="mr-3 h-5 w-5" /> Sign Up
+                        </Button>
+                      </Link>
+                    </SheetClose>
+                  </>
+                )}
               </div>
             </SheetContent>
           </Sheet>

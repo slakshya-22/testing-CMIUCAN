@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PartyPopper, RotateCcw, Trophy } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext"; // Import useAuth
 
 interface GameOverDialogProps {
   isOpen: boolean;
@@ -24,26 +25,40 @@ interface GameOverDialogProps {
   gameName?: string;
 }
 
-export function GameOverDialog({ isOpen, score, onPlayAgain, onSaveScore, gameName = "Cash Me If You Can" }: GameOverDialogProps) {
-  const [name, setName] = useState("");
+export function GameOverDialog({ 
+  isOpen, 
+  score, 
+  onPlayAgain, 
+  onSaveScore, 
+  gameName = "Cash Me If You Can" 
+}: GameOverDialogProps) {
+  const [nameInput, setNameInput] = useState("");
   const router = useRouter();
-  const localStorageKey = `${gameName.toLowerCase().replace(/\s+/g, "-")}PlayerName`;
+  const { user } = useAuth(); // Get current user
 
+  const localStorageKey = `${gameName.toLowerCase().replace(/\s+/g, "-")}PlayerName`;
 
   useEffect(() => {
     if (isOpen) {
-      const savedName = localStorage.getItem(localStorageKey);
-      if (savedName) {
-        setName(savedName);
+      if (user?.displayName) {
+        setNameInput(user.displayName);
+      } else {
+        const savedName = localStorage.getItem(localStorageKey);
+        if (savedName) {
+          setNameInput(savedName);
+        }
       }
     }
-  }, [isOpen, localStorageKey]);
+  }, [isOpen, user, localStorageKey]);
 
 
   const handleSaveScore = () => {
-    if (name.trim()) {
-      onSaveScore(name.trim());
-      localStorage.setItem(localStorageKey, name.trim());
+    const nameToSave = nameInput.trim() || user?.displayName || "Anonymous Player";
+    if (nameToSave) {
+      onSaveScore(nameToSave);
+      if (!user?.displayName) { // Only save to local storage if there's no firebase display name
+          localStorage.setItem(localStorageKey, nameToSave);
+      }
       router.push("/leaderboard");
     }
   };
@@ -61,33 +76,37 @@ export function GameOverDialog({ isOpen, score, onPlayAgain, onSaveScore, gameNa
             Game Over!
           </DialogTitle>
           <DialogDescription className="text-muted-foreground">
-            Congratulations! You scored <strong className="text-accent font-bold">{score.toLocaleString()}</strong> points in {gameName}.
-            Enter your name to save your score to the leaderboard.
+            Congratulations{user?.displayName ? `, ${user.displayName}` : ''}! You scored <strong className="text-accent font-bold">{score.toLocaleString()}</strong> points.
+            {score > 0 ? " Enter or confirm your name to save your score to the leaderboard." : " Better luck next time!"}
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="name" className="text-right text-muted-foreground">
-              Name
-            </Label>
-            <Input
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="col-span-3 bg-input border-border focus:ring-primary text-foreground placeholder:text-muted-foreground/70"
-              placeholder="Trivia Champion"
-            />
+        {score > 0 && (
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="name" className="text-right text-muted-foreground">
+                Name
+              </Label>
+              <Input
+                id="name"
+                value={nameInput}
+                onChange={(e) => setNameInput(e.target.value)}
+                className="col-span-3 bg-input border-border focus:ring-primary text-foreground placeholder:text-muted-foreground/70"
+                placeholder="Trivia Champion"
+              />
+            </div>
           </div>
-        </div>
+        )}
         <DialogFooter className="sm:justify-between space-y-2 sm:space-y-0 sm:space-x-2">
           <Button variant="outline" onClick={handlePlayAgain} className="border-primary text-primary hover:bg-primary/10 hover:text-primary">
             <RotateCcw className="mr-2 h-4 w-4" />
             Play Again
           </Button>
-          <Button onClick={handleSaveScore} disabled={!name.trim()} className="bg-primary hover:bg-primary/90 text-primary-foreground">
-            <Trophy className="mr-2 h-4 w-4" />
-            Save & View Leaderboard
-          </Button>
+          {score > 0 && (
+            <Button onClick={handleSaveScore} disabled={!nameInput.trim() && !user?.displayName} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+              <Trophy className="mr-2 h-4 w-4" />
+              Save & View Leaderboard
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
