@@ -16,6 +16,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Trophy, ListChecks, Medal } from "lucide-react"; // Medal for rank
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils"; // Added missing import
 
 export default function LeaderboardPage() {
   const [scores, setScores] = useState<ScoreEntry[]>([]);
