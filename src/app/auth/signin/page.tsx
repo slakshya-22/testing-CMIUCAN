@@ -7,7 +7,7 @@ import { signInWithEmailAndPassword } from "firebase/auth";
 import { Eye, EyeOff, LogIn, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react"; // Added useCallback
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -18,7 +18,6 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { auth } from "@/lib/firebase/config";
 import { useAuth } from "@/context/AuthContext";
-// import { Separator } from "@/components/ui/separator"; // Google Sign-In removed
 
 const signInSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -44,7 +43,7 @@ export default function SignInPage() {
   });
 
   const handleRedirect = useCallback(() => {
-    const redirectPath = searchParams?.get("redirect"); // Added optional chaining for safety
+    const redirectPath = searchParams?.get("redirect"); // Added optional chaining
     if (redirectPath) {
       router.push(decodeURIComponent(redirectPath));
     } else {
@@ -67,7 +66,7 @@ export default function SignInPage() {
         title: "Signed In Successfully!",
         description: "Welcome back!",
       });
-      // Redirect is handled by AuthContext or useEffect above
+      // Redirect is handled by useEffect above
     } catch (error: any) {
       console.error("Sign in error:", error);
       let errorMessage = "Failed to sign in. Please check your credentials.";
