@@ -28,12 +28,14 @@ export default function LeaderboardPage() {
   useEffect(() => {
     const fetchScores = async () => {
       if (!firestore) {
+        console.error("[LeaderboardPage] Firestore is not initialized.");
         setError("Database connection is not available.");
         setIsLoading(false);
         return;
       }
       setIsLoading(true);
       setError(null);
+      console.log("[LeaderboardPage] Fetching scores from Firestore...");
       try {
         const scoresCollection = collection(firestore, "leaderboard_scores");
         // Firestore requires a composite index for this query:
@@ -46,26 +48,36 @@ export default function LeaderboardPage() {
         const fetchedScores: ScoreEntry[] = [];
         querySnapshot.forEach((doc) => {
           const data = doc.data() as FirestoreScoreEntry;
+          // console.log(`[LeaderboardPage] Fetched doc ${doc.id}:`, data); 
           let dateStr = "N/A";
           if (data.timestamp && data.timestamp instanceof Timestamp) {
              dateStr = data.timestamp.toDate().toLocaleDateString();
+          } else if (data.timestamp) { // Handle cases where timestamp might be a plain JS object after SSR/deserialization if not handled carefully
+            try {
+              const jsDate = new Date((data.timestamp as any).seconds * 1000 + (data.timestamp as any).nanoseconds / 1000000);
+              dateStr = jsDate.toLocaleDateString();
+            } catch (dateError) {
+              console.warn(`[LeaderboardPage] Could not parse timestamp for doc ${doc.id}:`, data.timestamp, dateError);
+            }
           }
 
+
           fetchedScores.push({
-            id: doc.id, 
-            name: data.name,
-            score: data.score,
+            id: doc.id,
+            name: data.name || "Anonymous", // Fallback for name
+            score: data.score || 0, // Fallback for score
             date: dateStr,
-            timestampMillis: data.timestamp instanceof Timestamp ? data.timestamp.toMillis() : undefined,
+            timestampMillis: data.timestamp instanceof Timestamp ? data.timestamp.toMillis() : (data.timestamp ? ((data.timestamp as any).seconds * 1000) : undefined),
           });
         });
+        console.log("[LeaderboardPage] Successfully fetched and processed scores:", fetchedScores.length, "entries.");
         setScores(fetchedScores);
       } catch (e: any) {
-        console.error("Failed to fetch scores from Firestore", e);
+        console.error("[LeaderboardPage] Failed to fetch scores from Firestore:", e);
         if (e.code === 'failed-precondition' && e.message.includes('requires an index')) {
-          setError(`Database query failed: This query needs a composite index in Firestore. Please check the console logs for a link to create it, or create it manually in your Firebase console for the 'leaderboard_scores' collection (Fields: score DESC, timestamp ASC). Error: ${e.message}`);
+          setError(`Database query failed: This query needs a composite index in Firestore. Please check your Firebase console for 'leaderboard_scores' collection (Fields: score DESC, timestamp ASC). The error console might provide a direct link to create it. Error: ${e.message}`);
         } else {
-          setError("Could not load high scores. Please try again later.");
+          setError(`Could not load high scores. Please try again later. Error: ${e.message || e.toString()}`);
         }
         setScores([]);
       } finally {

@@ -3,14 +3,14 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import type { Question, Answer as AnswerType, FirestoreScoreEntry, AudiencePollResults } from '@/lib/types';
-import { KBC_POINTS } from '@/lib/game-data'; 
+import { KBC_POINTS } from '@/lib/game-data';
 import { useToast } from '@/hooks/use-toast';
 import { generateTriviaQuestions, type GenerateTriviaQuestionsInput } from '@/ai/flows/generate-trivia-questions-flow';
-import { firestore } from '@/lib/firebase/config'; 
-import { doc, getDoc, setDoc, serverTimestamp, Timestamp } from 'firebase/firestore'; 
+import { firestore } from '@/lib/firebase/config';
+import { doc, getDoc, setDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { useAuth } from '@/context/AuthContext';
 
-const INITIAL_TIMER_DURATION = 30; 
+const INITIAL_TIMER_DURATION = 30;
 const TOTAL_QUESTIONS_IN_GAME = 15;
 
 export type GameStatus = "idle" | "loading_questions" | "playing" | "answered" | "game_over" | "error_loading_questions";
@@ -31,7 +31,7 @@ export function useGameState() {
   const [selectedAnswer, setSelectedAnswer] = useState<AnswerType | null>(null);
   const [isAnswerRevealed, setIsAnswerRevealed] = useState(false);
   const [gameStatus, setGameStatus] = useState<GameStatus>("idle");
-  
+
   const [isPhoneAFriendUsed, setIsPhoneAFriendUsed] = useState(false);
   const [isFiftyFiftyUsed, setIsFiftyFiftyUsed] = useState(false);
   const [isAudiencePollUsed, setIsAudiencePollUsed] = useState(false);
@@ -46,11 +46,12 @@ export function useGameState() {
   const goToNextQuestion = useCallback(() => {
     setSelectedAnswer(null);
     setIsAnswerRevealed(false);
-    setAudiencePollResults(null); 
+    setAudiencePollResults(null);
     
     if (currentQuestionIndex < questions.length - 1) {
       const nextQuestion = questions[currentQuestionIndex + 1];
       if (nextQuestion) {
+        // Ensure displayed answers are shuffled for the next question
         setDisplayedAnswers(shuffleArray(nextQuestion.answers));
       }
       setCurrentQuestionIndex((prevIndex) => prevIndex + 1);
@@ -59,7 +60,7 @@ export function useGameState() {
       toast({
         title: "Congratulations!",
         description: `You've answered all ${questions.length} questions and your final score is ${score.toLocaleString()} points!`,
-        variant: "default", 
+        variant: "default",
         duration: 5000,
       });
       setGameStatus("game_over");
@@ -91,7 +92,7 @@ export function useGameState() {
         duration: 4000,
       });
     }
-    
+
     setTimeout(() => {
       if (!answer.isCorrect) {
         setGameStatus("game_over");
@@ -104,26 +105,26 @@ export function useGameState() {
 
   const loadQuestions = useCallback(async (mode?: string, category?: string) => {
     setGameStatus("loading_questions");
-    setQuestions([]); 
+    setQuestions([]);
     try {
-      const input: GenerateTriviaQuestionsInput = { 
+      const input: GenerateTriviaQuestionsInput = {
         numberOfQuestions: TOTAL_QUESTIONS_IN_GAME,
         difficulty: mode !== "Mixed" ? mode : undefined,
         category: category !== "General Knowledge" ? category : undefined,
         requestIdentifier: `session_${Date.now()}_${Math.random().toString(36).substring(7)}`,
-        variationHint: Math.random().toString(36).slice(2, 12), // Generate a random string for variation
+        variationHint: Math.random().toString(36).slice(2, 12),
       };
       console.log('[useGameState] Generating questions with input:', JSON.stringify(input, null, 2));
       const aiResult = await generateTriviaQuestions(input);
-      
+
       if (!aiResult || !aiResult.questions || aiResult.questions.length === 0) {
         throw new Error("AI failed to return any valid questions.");
       }
-      
+
       const questionsWithPoints = aiResult.questions.map((q, index) => ({
         ...q,
-        points: KBC_POINTS[index] || KBC_POINTS[KBC_POINTS.length - 1], 
-        id: q.id || `gen_q_client_fallback_${index}_${Date.now()}` 
+        points: KBC_POINTS[index] || KBC_POINTS[KBC_POINTS.length - 1],
+        id: q.id || `gen_q_client_fallback_${index}_${Date.now()}`
       }));
 
       setQuestions(questionsWithPoints);
@@ -143,27 +144,25 @@ export function useGameState() {
     } catch (error: any) {
       console.error("[useGameState] Failed to generate/load trivia questions:", error);
       let displayErrorMessage = "Could not generate new trivia questions. Please try again.";
-      
       if (error instanceof Error && error.message) {
         if (error.message.includes('An error occurred in the Server Components render') || error.message.includes('digest property is included on this error instance') || error.message.includes('A server error occurred during AI question generation')) {
           displayErrorMessage = "The AI failed to generate questions due to a server error. Please check server logs for details and try again.";
         } else if (error.message.includes('AI returned malformed data') || error.message.includes('AI prompt execution failed to produce a structured output')) {
-           displayErrorMessage = "The AI provided questions in an unexpected format. We're working on it. Please try again in a moment.";
+           displayErrorMessage = "The AI provided questions in an unexpected format. Please try again. If the problem persists, server logs may have more details.";
         } else {
           displayErrorMessage = error.message;
         }
       } else if (typeof error === 'string') {
         displayErrorMessage = error;
       }
-      
       toast({
         title: "Error Loading Questions",
         description: displayErrorMessage,
         variant: "destructive",
-        duration: 15000, 
+        duration: 15000,
       });
-      setQuestions([]); 
-      setGameStatus("error_loading_questions"); 
+      setQuestions([]);
+      setGameStatus("error_loading_questions");
     }
   }, [toast]);
 
@@ -176,11 +175,11 @@ export function useGameState() {
     setIsFiftyFiftyUsed(false);
     setIsAudiencePollUsed(false);
     setAudiencePollResults(null);
-    setQuestions([]); 
-    setDisplayedAnswers([]);
+    setQuestions([]);
+    setDisplayedAnswers([]); // Clear displayed answers for a new game
     loadQuestions(mode, category);
   }, [loadQuestions]);
-  
+
   useEffect(() => {
     if (currentQuestion) {
         setDisplayedAnswers(shuffleArray(currentQuestion.answers));
@@ -188,9 +187,7 @@ export function useGameState() {
         console.warn("[useGameState] Game is 'playing' but currentQuestion is null. This might indicate an issue with question indexing or an empty question set post-load.");
         setDisplayedAnswers([]);
     } else if (gameStatus !== "playing") {
-        // Ensures displayedAnswers are cleared if not in a playing state with a current question
-        // (e.g. game over, error, idle, loading)
-        setDisplayedAnswers([]); 
+        setDisplayedAnswers([]);
     }
   }, [currentQuestion, gameStatus, questions]);
 
@@ -205,7 +202,7 @@ export function useGameState() {
       setGameStatus("game_over");
     }
   }, [gameStatus, toast]);
-  
+
   const usePhoneAFriend = useCallback(() => {
     setIsPhoneAFriendUsed(true);
   }, []);
@@ -216,8 +213,8 @@ export function useGameState() {
     }
     const originalAnswers = currentQuestion.answers;
     const correctAnswer = originalAnswers.find(a => a.isCorrect);
-    const incorrectAnswersFromOriginal = originalAnswers.filter(a => !a.isCorrect); 
-    
+    const incorrectAnswersFromOriginal = originalAnswers.filter(a => !a.isCorrect);
+
     if (correctAnswer && incorrectAnswersFromOriginal.length > 0) {
       const oneRandomIncorrect = shuffleArray(incorrectAnswersFromOriginal)[0];
       const newDisplayedAnswers = shuffleArray([correctAnswer, oneRandomIncorrect]);
@@ -231,10 +228,10 @@ export function useGameState() {
     if (!currentQuestion || isAudiencePollUsed) return;
 
     const results: Record<string, number> = {};
-    const optionsForPoll = [...displayedAnswers]; // Use current displayed answers for the poll
+    const optionsForPoll = [...displayedAnswers];
     const correctAnswerInFullSet = currentQuestion.answers.find(a => a.isCorrect);
-    
-    if (!correctAnswerInFullSet) { 
+
+    if (!correctAnswerInFullSet) {
         toast({ title: "Audience Poll Error", description: "Could not determine correct answer for poll.", variant: "destructive"});
         return;
     }
@@ -245,36 +242,31 @@ export function useGameState() {
     let correctAnswerPercentage = 0;
 
     if (isCorrectAnswerDisplayed) {
-        // Give correct answer a higher chance, e.g., 40-70%
-        correctAnswerPercentage = Math.floor(Math.random() * 31) + 40; 
+        correctAnswerPercentage = Math.floor(Math.random() * 31) + 40;
         results[correctAnswerText] = correctAnswerPercentage;
         totalPercentage -= correctAnswerPercentage;
     }
-    
+
     const otherOptions = optionsForPoll.filter(opt => opt.text !== correctAnswerText);
 
     otherOptions.forEach((option, index) => {
-      if (index === otherOptions.length - 1) { 
-        // Assign remaining percentage to the last option
+      if (index === otherOptions.length - 1) {
         results[option.text] = Math.max(0, totalPercentage);
       } else {
-        // Distribute remaining percentage among other options
-        const maxForThisOption = Math.max(0, totalPercentage - (otherOptions.length - 1 - index)); // Ensure non-negative max
+        const maxForThisOption = Math.max(0, totalPercentage - (otherOptions.length - 1 - index));
         const randomPercentage = Math.floor(Math.random() * (maxForThisOption + 1));
-        const assignedPercentage = Math.min(randomPercentage, totalPercentage); // Don't assign more than available
+        const assignedPercentage = Math.min(randomPercentage, totalPercentage);
         results[option.text] = assignedPercentage;
         totalPercentage -= assignedPercentage;
       }
     });
-    
-    // Ensure all polled options have an entry, even if 0%
+
     optionsForPoll.forEach(opt => {
         if (!(opt.text in results)) {
-            results[opt.text] = 0; 
+            results[opt.text] = 0;
         }
     });
 
-    // Normalize percentages if they don't sum to 100 (due to Math.floor, etc.)
     let currentSum = Object.values(results).reduce((acc, val) => acc + val, 0);
     if (currentSum !== 100 && optionsForPoll.length > 0) {
         const optionToAdjust = optionsForPoll.find(opt => opt.text === correctAnswerText && isCorrectAnswerDisplayed) || optionsForPoll[0];
@@ -282,7 +274,6 @@ export function useGameState() {
              results[optionToAdjust.text] = Math.max(0, Math.min(100, results[optionToAdjust.text] + (100 - currentSum)));
         }
     }
-    // Final check, if still not 100, assign remainder to first option if available
     currentSum = Object.values(results).reduce((acc, val) => acc + val, 0);
     if (currentSum !== 100 && optionsForPoll.length > 0) {
         const firstKey = optionsForPoll[0].text;
@@ -298,31 +289,35 @@ export function useGameState() {
 
   const saveScore = useCallback(async (name: string, userId: string) => {
     if (!firestore) {
-        console.error("Firestore is not initialized.");
+        console.error("[saveScore] Firestore is not initialized.");
         toast({ title: "Error Saving Score", description: "Database connection error.", variant: "destructive" });
         return;
     }
     if (!userId) {
-        console.error("User ID is missing, cannot save score.");
+        console.error("[saveScore] User ID is missing, cannot save score.");
         toast({ title: "Error Saving Score", description: "User not authenticated.", variant: "destructive" });
         return;
     }
 
     const scoreDocRef = doc(firestore, "leaderboard_scores", userId);
+    console.log(`[saveScore] Attempting to save score ${score} for user ${name} (ID: ${userId})`);
 
     try {
         const docSnap = await getDoc(scoreDocRef);
         let shouldWrite = true;
-        let message = "Score saved successfully!";
+        let message = `Score of ${score.toLocaleString()} saved!`;
 
         if (docSnap.exists()) {
             const existingData = docSnap.data() as FirestoreScoreEntry;
+            console.log(`[saveScore] Existing score for user ${userId}: ${existingData.score}`);
             if (score > existingData.score) {
-                message = "New high score saved!";
+                message = `New high score of ${score.toLocaleString()} saved! Previous: ${existingData.score.toLocaleString()}.`;
             } else {
-                message = "Your score did not beat your previous high score.";
-                shouldWrite = false; 
+                message = `Your score of ${score.toLocaleString()} did not beat your previous high score of ${existingData.score.toLocaleString()}.`;
+                shouldWrite = false;
             }
+        } else {
+            console.log(`[saveScore] No existing score found for user ${userId}. Saving new score.`);
         }
 
         if (shouldWrite) {
@@ -330,14 +325,16 @@ export function useGameState() {
                 name: name,
                 score: score,
                 userId: userId,
-                timestamp: serverTimestamp() 
+                timestamp: serverTimestamp()
             };
-            await setDoc(scoreDocRef, scoreData); 
+            await setDoc(scoreDocRef, scoreData);
+            console.log(`[saveScore] Firestore write successful for user ${userId}.`);
              toast({
                 title: "Score Saved!",
                 description: message,
             });
         } else {
+             console.log(`[saveScore] Score not written for user ${userId} as it was not higher.`);
              toast({
                 title: "Score Status",
                 description: message,
@@ -345,14 +342,14 @@ export function useGameState() {
             });
         }
     } catch (error) {
-        console.error("Error saving score to Firestore: ", error);
+        console.error("[saveScore] Error saving score to Firestore: ", error);
         toast({
             title: "Error Saving Score",
             description: "Could not save your score to the global leaderboard. Please try again.",
             variant: "destructive",
         });
     }
-  }, [score, toast, user]);
+  }, [score, toast]); // user dependency was removed to avoid re-creating saveScore too often if only user object changed but not uid.
 
   return {
     questions,
@@ -366,8 +363,8 @@ export function useGameState() {
     handleSelectAnswer,
     handleTimeUp,
     INITIAL_TIMER_DURATION,
-    totalQuestions: questions.length > 0 ? questions.length : TOTAL_QUESTIONS_IN_GAME, 
-    
+    totalQuestions: questions.length > 0 ? questions.length : TOTAL_QUESTIONS_IN_GAME,
+
     isPhoneAFriendUsed,
     usePhoneAFriend,
     isFiftyFiftyUsed,
@@ -379,4 +376,3 @@ export function useGameState() {
     saveScore,
   };
 }
-
