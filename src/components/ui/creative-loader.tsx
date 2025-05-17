@@ -1,56 +1,53 @@
 
 "use client";
 
-import { Brain } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface CreativeLoaderProps {
   className?: string;
   size?: "small" | "medium" | "large";
   text?: string;
+  textColorClassName?: string; 
 }
 
-export function CreativeLoader({ className, size = "medium", text }: CreativeLoaderProps) {
-  const brainSizeClasses = {
-    small: "h-8 w-8 sm:h-10 sm:w-10",
-    medium: "h-12 w-12 sm:h-16 sm:w-16",
-    large: "h-20 w-20 sm:h-24 sm:w-24",
+export function CreativeLoader({
+  className,
+  size = "medium",
+  text,
+  textColorClassName = "text-muted-foreground",
+}: CreativeLoaderProps) {
+  
+  const dotSizeClasses = {
+    small: "w-2 h-2",
+    medium: "w-2.5 h-2.5", // Slightly smaller for better wave effect
+    large: "w-3.5 h-3.5",
+  };
+
+  const containerHeightClass = { 
+    small: "min-h-[4rem]",
+    medium: "min-h-[5rem]",
+    large: "min-h-[6rem]",
   };
 
   const textSizeClasses = {
-    small: "text-sm sm:text-base mt-2",
-    medium: "text-lg sm:text-xl mt-4",
-    large: "text-xl sm:text-2xl mt-6",
+    small: "text-xs sm:text-sm mt-3",
+    medium: "text-sm sm:text-base mt-4",
+    large: "text-base sm:text-lg mt-5",
   };
 
+  // Base class for each dot, using the 'animate-wave-scale' registered in tailwind.config.ts
+  const dotBaseClass = cn("rounded-full animate-wave-scale", dotSizeClasses[size]);
+
   return (
-    <div className={cn("flex flex-col justify-center items-center p-4", className)}>
-      <div className="relative">
-        <Brain
-          className={cn(
-            brainSizeClasses[size],
-            "text-primary animate-pulse"
-          )}
-        />
-        <div
-          className={cn(
-            "absolute inset-0 rounded-full animate-ping opacity-30",
-            "bg-gradient-to-br from-accent via-primary to-secondary",
-            brainSizeClasses[size]
-          )}
-          style={{ animationDuration: '1.5s' }}
-        ></div>
-         <div
-          className={cn(
-            "absolute inset-0 rounded-full opacity-20",
-            "bg-gradient-to-tl from-primary via-accent to-secondary animate-pulse",
-            brainSizeClasses[size]
-          )}
-          style={{ animationDuration: '2s', animationDelay: '0.5s' }}
-        ></div>
+    <div className={cn("flex flex-col justify-center items-center p-4", containerHeightClass[size], className)}>
+      <div className="flex items-center justify-center space-x-2">
+        <div className={cn(dotBaseClass, "bg-primary animation-delay-0s")} />
+        <div className={cn(dotBaseClass, "bg-accent animation-delay-150ms")} />
+        <div className={cn(dotBaseClass, "bg-secondary animation-delay-300ms")} />
+        <div className={cn(dotBaseClass, "bg-primary/80 animation-delay-450ms")} />
       </div>
       {text && (
-        <p className={cn("text-muted-foreground", textSizeClasses[size])}>
+        <p className={cn("text-center", textColorClassName, textSizeClasses[size])}>
           {text}
         </p>
       )}

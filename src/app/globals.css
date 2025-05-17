@@ -21,10 +21,10 @@
     --popover: 270 50% 10%; /* Darker for popovers */
     --popover-foreground: 240 40% 95%;
     
-    --primary: 267 100% 50%; /* Electric Indigo - Main interactive elements */
+    --primary: 267 100% 60%; /* Electric Indigo - Main interactive elements, slightly lighter for better vibrancy */
     --primary-foreground: 240 60% 97%; /* Light text on Electric Indigo */
     
-    --secondary: 282 100% 41%; /* Vivid Purple - Other accents, buttons */
+    --secondary: 282 100% 50%; /* Vivid Purple - Other accents, buttons, slightly lighter */
     --secondary-foreground: 240 60% 97%; /* Light text on Vivid Purple */
     
     --muted: 270 30% 25%; /* Muted Purple for less emphasis */
@@ -71,9 +71,9 @@
     --card-foreground: 240 40% 95%;
     --popover: 270 50% 10%;
     --popover-foreground: 240 40% 95%;
-    --primary: 267 100% 50%;
+    --primary: 267 100% 60%;
     --primary-foreground: 240 60% 97%;
-    --secondary: 282 100% 41%;
+    --secondary: 282 100% 50%;
     --secondary-foreground: 240 60% 97%;
     --muted: 270 30% 25%;
     --muted-foreground: 240 30% 70%;
@@ -112,5 +112,27 @@
     @apply bg-background text-foreground antialiased;
     /* Consider a subtle gradient for depth if desired */
     /* background-image: radial-gradient(circle at top center, hsl(var(--background)) 0%, hsl(var(--background-end, var(--background))) 100%); */
+  }
+}
+
+/* Custom Animation Delay Utilities */
+@layer utilities {
+  .animation-delay-0s {
+    animation-delay: 0s;
+  }
+  .animation-delay-150ms {
+    animation-delay: 0.15s;
+  }
+  .animation-delay-200ms { /* Added for flexibility if needed */
+    animation-delay: 0.2s;
+  }
+  .animation-delay-300ms {
+    animation-delay: 0.3s;
+  }
+  .animation-delay-400ms { /* Added for flexibility if needed */
+    animation-delay: 0.4s;
+  }
+  .animation-delay-450ms {
+    animation-delay: 0.45s;
   }
 }
