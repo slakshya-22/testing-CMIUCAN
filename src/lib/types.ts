@@ -1,5 +1,6 @@
 
 import { z } from 'zod';
+import type { Timestamp } from 'firebase/firestore'; // For type reference if needed, though client state might use number
 
 export const DifficultyEnum = z.enum(["Easy", "Medium", "Hard", "Very Hard"]);
 export type Difficulty = z.infer<typeof DifficultyEnum>;
@@ -15,16 +16,26 @@ export const QuestionSchema = z.object({
   text: z.string().describe("The text of the trivia question."),
   answers: z.array(AnswerSchema).length(4).describe("An array of exactly four answer options."),
   difficulty: DifficultyEnum.describe("The difficulty level of the question."),
-  points: z.number().optional().describe("Points awarded for this question (will be assigned by the game logic)."), // Points will be assigned later by game logic
+  points: z.number().optional().describe("Points awarded for this question (will be assigned by the game logic)."),
   imageUrl: z.string().optional().describe("An optional URL for an image related to the question."),
 });
 export type Question = z.infer<typeof QuestionSchema>;
 
-export interface ScoreEntry {
-  id: string;
+export interface FirestoreScoreEntry {
   name: string;
   score: number;
-  date: string;
+  userId: string;
+  timestamp: Timestamp; // Firestore Timestamp
 }
 
-export type AudiencePollResults = Record<string, number>; // e.g. { "Option A": 60, "Option B": 20, ... }
+// Client-side representation of a score entry
+export interface ScoreEntry {
+  id: string; // This will be the userId (document ID from Firestore)
+  name: string;
+  score: number;
+  date: string; // Formatted date string for display
+  timestampMillis?: number; // Milliseconds since epoch, for client-side sorting if needed
+}
+
+export const AudiencePollResultsSchema = z.record(z.number());
+export type AudiencePollResults = z.infer<typeof AudiencePollResultsSchema>;

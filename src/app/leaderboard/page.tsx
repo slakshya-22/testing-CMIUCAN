@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { ScoreEntry } from "@/lib/types";
+import type { ScoreEntry, FirestoreScoreEntry } from "@/lib/types"; // Added FirestoreScoreEntry
 import {
   Table,
   TableBody,
@@ -13,34 +13,60 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trophy, ListChecks, Medal, Loader2 } from "lucide-react";
+import { Trophy, Loader2, Medal } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils"; 
+import { firestore } from "@/lib/firebase/config";
+import { collection, query, orderBy, limit, getDocs, Timestamp } from "firebase/firestore";
 
 export default function LeaderboardPage() {
   const [scores, setScores] = useState<ScoreEntry[]>([]);
-  const [isLoading, setIsLoading] = useState(true); // Initialize to true
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Ensure localStorage is only accessed on the client
-    if (typeof window !== 'undefined') {
-      const storedScores = localStorage.getItem("cashMeIfYouCanHighScores");
-      if (storedScores) {
-        try {
-          const parsedScores = JSON.parse(storedScores) as ScoreEntry[];
-          parsedScores.sort((a, b) => b.score - a.score);
-          setScores(parsedScores.slice(0,10)); 
-        } catch (e) {
-          console.error("Failed to parse scores from localStorage", e);
-          localStorage.removeItem("cashMeIfYouCanHighScores"); 
-          setScores([]); // Set to empty array on error
-        }
-      } else {
-        setScores([]); // Set to empty if no scores are stored
+    const fetchScores = async () => {
+      if (!firestore) {
+        setError("Database connection is not available.");
+        setIsLoading(false);
+        return;
       }
-      setIsLoading(false);
-    }
+      setIsLoading(true);
+      setError(null);
+      try {
+        const scoresCollection = collection(firestore, "leaderboard_scores");
+        const q = query(scoresCollection, orderBy("score", "desc"), orderBy("timestamp", "asc"), limit(10));
+        
+        const querySnapshot = await getDocs(q);
+        const fetchedScores: ScoreEntry[] = [];
+        querySnapshot.forEach((doc) => {
+          const data = doc.data() as FirestoreScoreEntry;
+          // Convert Firestore Timestamp to a readable date string
+          let dateStr = "N/A";
+          if (data.timestamp && data.timestamp instanceof Timestamp) {
+             dateStr = data.timestamp.toDate().toLocaleDateString();
+          }
+
+          fetchedScores.push({
+            id: doc.id, // userId is the document id
+            name: data.name,
+            score: data.score,
+            date: dateStr,
+            timestampMillis: data.timestamp instanceof Timestamp ? data.timestamp.toMillis() : undefined,
+          });
+        });
+        setScores(fetchedScores);
+      } catch (e) {
+        console.error("Failed to fetch scores from Firestore", e);
+        setError("Could not load high scores. Please try again later.");
+        setScores([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchScores();
   }, []);
 
   if (isLoading) {
@@ -48,6 +74,19 @@ export default function LeaderboardPage() {
       <div className="flex flex-col justify-center items-center min-h-[calc(100vh-12rem)] p-4">
         <Loader2 className="h-12 w-12 sm:h-16 sm:w-16 animate-spin text-primary" />
         <p className="ml-4 text-lg sm:text-xl text-muted-foreground mt-4">Loading leaderboard...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col justify-center items-center min-h-[calc(100vh-12rem)] p-4 text-center">
+        <Trophy className="h-12 w-12 sm:h-16 sm:w-16 text-destructive mb-4" />
+        <p className="text-xl sm:text-2xl text-destructive-foreground font-semibold">Error Loading Leaderboard</p>
+        <p className="text-muted-foreground mt-2 mb-6">{error}</p>
+        <Button onClick={() => window.location.reload()} className="bg-primary hover:bg-primary/90">
+            Try Again
+        </Button>
       </div>
     );
   }
@@ -95,7 +134,7 @@ export default function LeaderboardPage() {
               <TableBody>
                 {scores.map((entry, index) => (
                   <TableRow 
-                    key={entry.id || index} 
+                    key={entry.id} 
                     className={cn(
                         "hover:bg-primary/10 border-b-border/50",
                         index === 0 && "bg-accent/10 hover:bg-accent/20", 

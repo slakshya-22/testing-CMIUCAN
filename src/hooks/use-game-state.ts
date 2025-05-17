@@ -2,10 +2,13 @@
 "use client";
 
 import { useState, useCallback, useEffect } from 'react';
-import type { Question, Answer as AnswerType, ScoreEntry, AudiencePollResults } from '@/lib/types';
+import type { Question, Answer as AnswerType, FirestoreScoreEntry } from '@/lib/types';
 import { KBC_POINTS } from '@/lib/game-data'; 
 import { useToast } from '@/hooks/use-toast';
 import { generateTriviaQuestions, type GenerateTriviaQuestionsInput } from '@/ai/flows/generate-trivia-questions-flow';
+import { firestore } from '@/lib/firebase/config'; // Firestore instance
+import { doc, getDoc, setDoc, serverTimestamp, Timestamp } from 'firebase/firestore'; // Firestore functions
+import { useAuth } from '@/context/AuthContext';
 
 const INITIAL_TIMER_DURATION = 30; 
 const TOTAL_QUESTIONS_IN_GAME = 15;
@@ -32,26 +35,27 @@ export function useGameState() {
   const [isPhoneAFriendUsed, setIsPhoneAFriendUsed] = useState(false);
   const [isFiftyFiftyUsed, setIsFiftyFiftyUsed] = useState(false);
   const [isAudiencePollUsed, setIsAudiencePollUsed] = useState(false);
-  const [audiencePollResults, setAudiencePollResults] = useState<AudiencePollResults | null>(null);
+  const [audiencePollResults, setAudiencePollResults] = useState<Record<string, number> | null>(null);
   const [displayedAnswers, setDisplayedAnswers] = useState<AnswerType[]>([]);
 
   const { toast } = useToast();
+  const { user } = useAuth(); // Get authenticated user
 
   const currentQuestion = questions[currentQuestionIndex] || null;
 
   const goToNextQuestion = useCallback(() => {
+    setSelectedAnswer(null);
+    setIsAnswerRevealed(false);
+    setAudiencePollResults(null); 
+    setDisplayedAnswers([]); // Clear displayed answers before moving to next
+
     if (currentQuestionIndex < questions.length - 1) {
       const nextQuestion = questions[currentQuestionIndex + 1];
       if (nextQuestion) {
         setDisplayedAnswers(shuffleArray(nextQuestion.answers));
-      } else {
-        setDisplayedAnswers([]);
       }
       setCurrentQuestionIndex((prevIndex) => prevIndex + 1);
-      setSelectedAnswer(null);
-      setIsAnswerRevealed(false);
       setGameStatus("playing");
-      setAudiencePollResults(null); 
     } else {
       toast({
         title: "Congratulations!",
@@ -108,7 +112,9 @@ export function useGameState() {
         category: category !== "General Knowledge" ? category : undefined,
         sessionId: `session_${Date.now()}_${Math.random().toString(36).substring(7)}`
       };
+      console.log('[useGameState] Generating questions with input:', input);
       const aiResult = await generateTriviaQuestions(input);
+      console.log('[useGameState] AI Result:', aiResult);
       
       if (!aiResult || !aiResult.questions || aiResult.questions.length === 0) {
         throw new Error("AI failed to return any valid questions.");
@@ -135,26 +141,24 @@ export function useGameState() {
         throw new Error("No questions were processed after AI generation.");
       }
     } catch (error: any) {
-      console.error("Failed to generate/load trivia questions (client-side catch):", error);
+      console.error("[useGameState] Failed to generate/load trivia questions:", error);
       let displayErrorMessage = "Could not generate new trivia questions. Please try again.";
       
       if (error instanceof Error && error.message) {
-        displayErrorMessage = error.message;
+        if (error.message.includes("An error occurred in the Server Components render") || error.message.includes("digest property is included on this error instance")) {
+          displayErrorMessage = "The AI failed to generate questions due to a server error. Please check server logs for details and try again.";
+        } else {
+          displayErrorMessage = error.message;
+        }
       } else if (typeof error === 'string') {
         displayErrorMessage = error;
-      }
-
-      if (displayErrorMessage.includes("An error occurred in the Server Components render") || 
-          displayErrorMessage.includes("digest property is included on this error instance") ||
-          displayErrorMessage.toLowerCase().includes("failed to fetch")) { // Added check for generic fetch failure
-        displayErrorMessage = "The AI failed to generate questions due to a server error. Please check server logs for details and try again.";
       }
       
       toast({
         title: "Error Loading Questions",
         description: displayErrorMessage,
         variant: "destructive",
-        duration: 10000, // Increased duration for error message
+        duration: 15000, 
       });
       setQuestions([]); 
       setGameStatus("error_loading_questions"); 
@@ -170,6 +174,7 @@ export function useGameState() {
     setIsFiftyFiftyUsed(false);
     setIsAudiencePollUsed(false);
     setAudiencePollResults(null);
+    setQuestions([]); // Clear old questions
     setDisplayedAnswers([]);
     loadQuestions(mode, category);
   }, [loadQuestions]);
@@ -179,10 +184,9 @@ export function useGameState() {
         setDisplayedAnswers(shuffleArray(currentQuestion.answers));
     } else if (gameStatus === "playing" && questions.length > 0 && !currentQuestion) {
         console.warn("[useGameState] Game is 'playing' but currentQuestion is null. This might indicate an issue with question indexing or an empty question set post-load.");
-        // Potentially set to error state or re-evaluate.
-        // For now, ensure displayedAnswers is empty if no currentQuestion
         setDisplayedAnswers([]);
-    } else {
+    } else if (gameStatus !== "playing") {
+        // Clear displayed answers if not in playing state (e.g., game over, idle)
         setDisplayedAnswers([]); 
     }
   }, [currentQuestion, gameStatus, questions]);
@@ -223,8 +227,8 @@ export function useGameState() {
   const useAudiencePoll = useCallback(() => {
     if (!currentQuestion || isAudiencePollUsed) return;
 
-    const results: AudiencePollResults = {};
-    const optionsForPoll = [...displayedAnswers]; // Use current displayed answers for the poll
+    const results: Record<string, number> = {};
+    const optionsForPoll = [...displayedAnswers];
     const correctAnswerInFullSet = currentQuestion.answers.find(a => a.isCorrect);
     
     if (!correctAnswerInFullSet) { 
@@ -234,12 +238,11 @@ export function useGameState() {
     const correctAnswerText = correctAnswerInFullSet.text;
 
     let totalPercentage = 100;
-    // The correct answer (if present in current optionsForPoll) gets a higher chance
     const isCorrectAnswerDisplayed = optionsForPoll.some(opt => opt.text === correctAnswerText);
     let correctAnswerPercentage = 0;
 
     if (isCorrectAnswerDisplayed) {
-        correctAnswerPercentage = Math.floor(Math.random() * 31) + 40; // 40% to 70% for the correct answer
+        correctAnswerPercentage = Math.floor(Math.random() * 31) + 40; // 40% to 70%
         results[correctAnswerText] = correctAnswerPercentage;
         totalPercentage -= correctAnswerPercentage;
     }
@@ -248,9 +251,8 @@ export function useGameState() {
 
     otherOptions.forEach((option, index) => {
       if (index === otherOptions.length - 1) { 
-        results[option.text] = totalPercentage > 0 ? totalPercentage : 0;
+        results[option.text] = Math.max(0, totalPercentage);
       } else {
-        // Ensure non-negative maxForThisOption
         const maxForThisOption = Math.max(0, totalPercentage - (otherOptions.length - 1 - index)); 
         const randomPercentage = Math.floor(Math.random() * (maxForThisOption + 1));
         const assignedPercentage = Math.min(randomPercentage, totalPercentage);
@@ -259,14 +261,12 @@ export function useGameState() {
       }
     });
     
-    // Ensure all displayed options have a percentage, even if 0
     optionsForPoll.forEach(opt => {
         if (!(opt.text in results)) {
             results[opt.text] = 0; 
         }
     });
 
-    // Normalize if sum is not 100 due to rounding or if correct answer wasn't in displayed options initially
     let currentSum = Object.values(results).reduce((acc, val) => acc + val, 0);
     if (currentSum !== 100 && optionsForPoll.length > 0) {
         const optionToAdjust = optionsForPoll.find(opt => opt.text === correctAnswerText && isCorrectAnswerDisplayed) || optionsForPoll[0];
@@ -274,60 +274,83 @@ export function useGameState() {
              results[optionToAdjust.text] = Math.max(0, Math.min(100, results[optionToAdjust.text] + (100 - currentSum)));
         }
     }
-    currentSum = Object.values(results).reduce((acc, val) => acc + val, 0); // Recalculate sum
-    if (currentSum !== 100 && optionsForPoll.length > 0) { // If still not 100, adjust first option
+    currentSum = Object.values(results).reduce((acc, val) => acc + val, 0);
+    if (currentSum !== 100 && optionsForPoll.length > 0) {
         const firstKey = optionsForPoll[0].text;
         if (results[firstKey] !== undefined) {
            results[firstKey] = Math.max(0, Math.min(100, results[firstKey] + (100 - currentSum)));
         }
     }
 
-
     setAudiencePollResults(results);
     setIsAudiencePollUsed(true);
     toast({ title: "Audience Poll Used", description: "The audience has cast their votes!"});
   }, [currentQuestion, isAudiencePollUsed, displayedAnswers, toast]);
 
-  const saveScore = useCallback((name: string) => {
-    const localStorageKey = "cashMeIfYouCanHighScores";
-    const highScores = JSON.parse(localStorage.getItem(localStorageKey) || "[]") as ScoreEntry[];
-    
-    const normalizedName = name.trim(); 
-    const existingPlayerIndex = highScores.findIndex(entry => entry.name.toLowerCase() === normalizedName.toLowerCase());
-    
-    if (existingPlayerIndex !== -1) {
-      if (score > highScores[existingPlayerIndex].score) {
-        highScores[existingPlayerIndex].score = score;
-        highScores[existingPlayerIndex].date = new Date().toLocaleDateString();
-        toast({
-          title: "High Score Updated!",
-          description: `${highScores[existingPlayerIndex].name}, your new high score of ${score.toLocaleString()} has been saved.`,
-        });
-      } else {
-         toast({
-          title: "Score Not Higher",
-          description: `${highScores[existingPlayerIndex].name}, your score of ${score.toLocaleString()} did not beat your current high score of ${highScores[existingPlayerIndex].score.toLocaleString()}. Better luck next time!`,
-          duration: 4000,
-        });
-      }
-    } else {
-      const newScoreEntry: ScoreEntry = {
-        id: new Date().toISOString(),
-        name: normalizedName,
-        score,
-        date: new Date().toLocaleDateString(),
-      };
-      highScores.push(newScoreEntry);
-      toast({
-        title: "Score Saved!",
-        description: `${normalizedName}, your score of ${score.toLocaleString()} has been saved to the leaderboard.`,
-      });
+  const saveScore = useCallback(async (name: string, userId: string) => {
+    if (!firestore) {
+        console.error("Firestore is not initialized.");
+        toast({ title: "Error Saving Score", description: "Database connection error.", variant: "destructive" });
+        return;
+    }
+    if (!userId) {
+        console.error("User ID is missing, cannot save score.");
+        toast({ title: "Error Saving Score", description: "User not authenticated.", variant: "destructive" });
+        return;
     }
 
-    highScores.sort((a, b) => b.score - a.score); 
-    localStorage.setItem(localStorageKey, JSON.stringify(highScores.slice(0, 10))); 
-    
-  }, [score, toast]);
+    const scoreDocRef = doc(firestore, "leaderboard_scores", userId);
+
+    try {
+        const docSnap = await getDoc(scoreDocRef);
+        let shouldWrite = true;
+        let message = "Score saved successfully!";
+
+        if (docSnap.exists()) {
+            const existingData = docSnap.data() as FirestoreScoreEntry;
+            if (score > existingData.score) {
+                message = "New high score saved!";
+            } else if (score === existingData.score) {
+                // If scores are equal, we could compare timestamps, but Firestore rules typically handle "write only if better"
+                // For simplicity, if score is same or lower, we won't update unless new timestamp logic for tie-break is desired on save.
+                // The query already handles tie-breaking on read by timestamp.
+                // Let's just update if score is strictly greater to avoid unnecessary writes.
+                 message = "Your score matches your previous high score.";
+                 shouldWrite = false; // Don't write if score isn't higher
+            } else {
+                message = "Your score did not beat your previous high score.";
+                shouldWrite = false; // Don't write if score is lower
+            }
+        }
+
+        if (shouldWrite) {
+            const scoreData: Omit<FirestoreScoreEntry, 'timestamp'> & { timestamp: any } = {
+                name: name,
+                score: score,
+                userId: userId,
+                timestamp: serverTimestamp() // Firestore will set the server time
+            };
+            await setDoc(scoreDocRef, scoreData); // This will create or overwrite
+             toast({
+                title: "Score Saved!",
+                description: message,
+            });
+        } else {
+             toast({
+                title: "Score Status",
+                description: message,
+                duration: 4000,
+            });
+        }
+    } catch (error) {
+        console.error("Error saving score to Firestore: ", error);
+        toast({
+            title: "Error Saving Score",
+            description: "Could not save your score to the global leaderboard. Please try again.",
+            variant: "destructive",
+        });
+    }
+  }, [score, toast, user]);
 
   return {
     questions,

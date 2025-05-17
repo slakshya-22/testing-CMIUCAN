@@ -13,15 +13,15 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PartyPopper, RotateCcw, Trophy } from "lucide-react";
+import { PartyPopper, RotateCcw, Trophy, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/context/AuthContext"; // Import useAuth
+import { useAuth } from "@/context/AuthContext";
 
 interface GameOverDialogProps {
   isOpen: boolean;
   score: number;
   onPlayAgain: () => void;
-  onSaveScore: (name: string) => void;
+  onSaveScore: (name: string, userId: string) => Promise<void>; // Modified to take userId and be async
   gameName?: string;
 }
 
@@ -33,32 +33,36 @@ export function GameOverDialog({
   gameName = "Cash Me If You Can" 
 }: GameOverDialogProps) {
   const [nameInput, setNameInput] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
   const router = useRouter();
-  const { user } = useAuth(); // Get current user
+  const { user } = useAuth();
 
-  const localStorageKey = `${gameName.toLowerCase().replace(/\s+/g, "-")}PlayerName`;
+  // No need for localStorageKey for player name anymore if using Firebase display name.
 
   useEffect(() => {
     if (isOpen) {
       if (user?.displayName) {
         setNameInput(user.displayName);
       } else {
-        const savedName = localStorage.getItem(localStorageKey);
-        if (savedName) {
-          setNameInput(savedName);
-        }
+        // Fallback if display name is not set, user might need to input
+        setNameInput(""); 
       }
+      setIsSaving(false); // Reset saving state when dialog opens
     }
-  }, [isOpen, user, localStorageKey]);
+  }, [isOpen, user]);
 
 
-  const handleSaveScore = () => {
-    const nameToSave = nameInput.trim() || user?.displayName || "Anonymous Player";
+  const handleSaveScore = async () => {
+    if (!user) {
+      // This case should ideally not be reached if game is protected
+      console.error("User not authenticated, cannot save score.");
+      return;
+    }
+    const nameToSave = nameInput.trim() || user.displayName || "Anonymous Player";
     if (nameToSave) {
-      onSaveScore(nameToSave);
-      if (!user?.displayName) { // Only save to local storage if there's no firebase display name
-          localStorage.setItem(localStorageKey, nameToSave);
-      }
+      setIsSaving(true);
+      await onSaveScore(nameToSave, user.uid);
+      setIsSaving(false);
       router.push("/leaderboard");
     }
   };
@@ -92,19 +96,20 @@ export function GameOverDialog({
                 onChange={(e) => setNameInput(e.target.value)}
                 className="col-span-3 bg-input border-border focus:ring-primary text-foreground placeholder:text-muted-foreground/70"
                 placeholder="Trivia Champion"
+                disabled={isSaving}
               />
             </div>
           </div>
         )}
         <DialogFooter className="sm:justify-between space-y-2 sm:space-y-0 sm:space-x-2">
-          <Button variant="outline" onClick={handlePlayAgain} className="border-primary text-primary hover:bg-primary/10 hover:text-primary">
+          <Button variant="outline" onClick={handlePlayAgain} className="border-primary text-primary hover:bg-primary/10 hover:text-primary" disabled={isSaving}>
             <RotateCcw className="mr-2 h-4 w-4" />
             Play Again
           </Button>
           {score > 0 && (
-            <Button onClick={handleSaveScore} disabled={!nameInput.trim() && !user?.displayName} className="bg-primary hover:bg-primary/90 text-primary-foreground">
-              <Trophy className="mr-2 h-4 w-4" />
-              Save & View Leaderboard
+            <Button onClick={handleSaveScore} disabled={(!nameInput.trim() && !user?.displayName) || isSaving} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+              {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trophy className="mr-2 h-4 w-4" />}
+              {isSaving ? "Saving..." : "Save & View Leaderboard"}
             </Button>
           )}
         </DialogFooter>
