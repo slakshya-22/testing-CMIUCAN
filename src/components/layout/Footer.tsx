@@ -2,7 +2,7 @@
 "use client";
 
 import Link from 'next/link';
-import { Brain } from 'lucide-react';
+import { Brain, Github, Instagram, Linkedin } from 'lucide-react'; // Added social icons
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
@@ -17,6 +17,20 @@ export function Footer() {
                 Cash Me If You Can
               </span>
             </Link>
+        </div>
+        <div className="flex justify-center space-x-5 my-4">
+          <a href="#" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors duration-300">
+            <Github className="h-6 w-6" />
+            <span className="sr-only">GitHub</span>
+          </a>
+          <a href="#" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors duration-300">
+            <Instagram className="h-6 w-6" />
+            <span className="sr-only">Instagram</span>
+          </a>
+          <a href="#" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors duration-300">
+            <Linkedin className="h-6 w-6" />
+            <span className="sr-only">LinkedIn</span>
+          </a>
         </div>
         <p className="text-xs sm:text-sm">
           Created by Lakshya Sharma with ❤️
