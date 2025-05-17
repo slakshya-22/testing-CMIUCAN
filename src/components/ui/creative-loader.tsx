@@ -18,36 +18,37 @@ export function CreativeLoader({
 }: CreativeLoaderProps) {
   
   const dotSizeClasses = {
-    small: "w-2 h-2",
-    medium: "w-2.5 h-2.5", // Slightly smaller for better wave effect
-    large: "w-3.5 h-3.5",
+    small: "w-2.5 h-2.5", // Increased slightly
+    medium: "w-3 h-3",    // Increased slightly
+    large: "w-4 h-4",     // Increased slightly
   };
 
   const containerHeightClass = { 
-    small: "min-h-[4rem]",
-    medium: "min-h-[5rem]",
-    large: "min-h-[6rem]",
+    small: "min-h-[4.5rem]",
+    medium: "min-h-[5.5rem]",
+    large: "min-h-[6.5rem]",
   };
 
   const textSizeClasses = {
-    small: "text-xs sm:text-sm mt-3",
+    small: "text-xs sm:text-sm mt-3.5",
     medium: "text-sm sm:text-base mt-4",
     large: "text-base sm:text-lg mt-5",
   };
 
-  // Base class for each dot, using the 'animate-wave-scale' registered in tailwind.config.ts
-  const dotBaseClass = cn("rounded-full animate-wave-scale", dotSizeClasses[size]);
+  // Base class for each dot, using the 'animate-wave-scale'
+  const dotBaseClass = cn("rounded-full animate-wave-scale shadow-md", dotSizeClasses[size]);
 
   return (
     <div className={cn("flex flex-col justify-center items-center p-4", containerHeightClass[size], className)}>
-      <div className="flex items-center justify-center space-x-2">
+      <div className="flex items-center justify-center space-x-2.5"> {/* Increased space slightly */}
         <div className={cn(dotBaseClass, "bg-primary animation-delay-0s")} />
         <div className={cn(dotBaseClass, "bg-accent animation-delay-150ms")} />
         <div className={cn(dotBaseClass, "bg-secondary animation-delay-300ms")} />
-        <div className={cn(dotBaseClass, "bg-primary/80 animation-delay-450ms")} />
+        <div className={cn(dotBaseClass, "bg-primary/70 animation-delay-450ms")} /> 
+        <div className={cn(dotBaseClass, "bg-accent/70 animation-delay-[0.6s]")} /> {/* Added 5th dot */}
       </div>
       {text && (
-        <p className={cn("text-center", textColorClassName, textSizeClasses[size])}>
+        <p className={cn("text-center font-medium", textColorClassName, textSizeClasses[size])}>
           {text}
         </p>
       )}

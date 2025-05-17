@@ -123,16 +123,19 @@
   .animation-delay-150ms {
     animation-delay: 0.15s;
   }
-  .animation-delay-200ms { /* Added for flexibility if needed */
+  .animation-delay-200ms { 
     animation-delay: 0.2s;
   }
   .animation-delay-300ms {
     animation-delay: 0.3s;
   }
-  .animation-delay-400ms { /* Added for flexibility if needed */
+  .animation-delay-400ms { 
     animation-delay: 0.4s;
   }
   .animation-delay-450ms {
     animation-delay: 0.45s;
+  }
+  .animation-delay-\[0\.6s\] { /* Added for 5th dot in loader */
+    animation-delay: 0.6s;
   }
 }

@@ -49,7 +49,7 @@ export function useGameState() {
   const goToNextQuestion = useCallback(() => {
     setSelectedAnswer(null);
     setIsAnswerRevealed(false);
-    setAudiencePollResults(null);
+    setAudiencePollResults(null); // Reset poll results for the new question
     
     if (currentQuestionIndex < questions.length - 1) {
       const nextQuestion = questions[currentQuestionIndex + 1];
@@ -67,7 +67,7 @@ export function useGameState() {
 
 
   const handleSelectAnswer = useCallback((answer: AnswerType) => {
-    if (isAnswerRevealed || (gameStatus !== "playing" && gameStatus !== "answered")) return; // Allow processing if "answered" to go to next state
+    if (isAnswerRevealed || (gameStatus !== "playing" && gameStatus !== "answered")) return;
     setSelectedAnswer(answer);
     setIsAnswerRevealed(true);
     setGameStatus("answered"); 
@@ -79,22 +79,21 @@ export function useGameState() {
       toast({
         title: "Correct!",
         description: `You won ${(currentQuestion?.points || 0).toLocaleString()} points.`,
-        variant: "default",
+        variant: "default", 
         duration: 2000,
       });
 
-      // Check if it was the last question
       if (currentQuestionIndex === questions.length - 1) {
         const endTime = Date.now();
         setGameEndTime(endTime);
-        setGameStatus("game_won"); // Player has won the game!
+        setGameStatus("game_won");
         toast({
-          title: "YOU'VE WON!",
-          description: `Amazing! You answered all ${questions.length} questions correctly! Final Score: ${newScore.toLocaleString()}`,
-          variant: "default",
-          duration: 8000,
+          title: "✨ YOU'VE CONQUERED THE GAME! ✨",
+          description: `Absolutely brilliant! You've answered all ${questions.length} questions correctly! Your final score: ${newScore.toLocaleString()} points.`,
+          variant: "default", 
+          duration: 10000, 
         });
-        return; // Stop further processing for next question
+        return; 
       }
     } else {
       const endTime = Date.now();
@@ -107,20 +106,19 @@ export function useGameState() {
       });
     }
 
-    // Timeout to show correctness before moving to next question or game over
     setTimeout(() => {
       if (!answer.isCorrect) {
         setGameStatus("game_over");
-      } else if (gameStatus !== "game_won") { // If not already won
+      } else if (gameStatus !== "game_won") {
         goToNextQuestion();
       }
-    }, answer.isCorrect ? 2000 : 4000);
+    }, answer.isCorrect ? 2500 : 4000); // Slightly longer pause for correct answer
 
   }, [isAnswerRevealed, gameStatus, currentQuestion, score, toast, goToNextQuestion, currentQuestionIndex, questions.length]);
 
   const loadQuestions = useCallback(async (mode?: string, category?: string) => {
     setGameStatus("loading_questions");
-    setQuestions([]); // Clear old questions
+    setQuestions([]); 
     setDisplayedAnswers([]);
     try {
       const input: GenerateTriviaQuestionsInput = {
@@ -140,7 +138,7 @@ export function useGameState() {
 
       const questionsWithPoints = aiResult.questions.map((q, index) => ({
         ...q,
-        points: KBC_POINTS[index] || KBC_POINTS[KBC_POINTS.length - 1], // Assign points based on KBC progression
+        points: KBC_POINTS[index] || KBC_POINTS[KBC_POINTS.length - 1],
         id: q.id || `gen_q_client_fallback_${index}_${Date.now()}`
       }));
 
@@ -163,11 +161,11 @@ export function useGameState() {
     } catch (e: any) {
       console.error("[useGameState] Failed to generate/load trivia questions:", e);
       let displayErrorMessage = "Could not generate new trivia questions. Please try again.";
-      if (e && e.message) {
+       if (e && e.message) {
         if (e.message.includes('An error occurred in the Server Components render') || e.message.includes('digest property is included on this error instance') || e.message.includes('A server error occurred during AI question generation')) {
           displayErrorMessage = "The AI failed to generate questions due to a server error. Please check server logs for details and try again.";
-        } else if (e.message.includes('AI returned malformed data') || e.message.includes('AI prompt execution failed to produce a structured output')) {
-           displayErrorMessage = "The AI provided questions in an unexpected format. Please try again. If the problem persists, server logs may have more details.";
+        } else if (e.message.includes('AI returned malformed data') || e.message.includes('AI prompt execution failed to produce a structured output') || e.message.includes('AI Flow Error')) {
+           displayErrorMessage = `The AI encountered an issue: ${e.message}. Please try again. If the problem persists, server logs may have more details.`;
         } else {
           displayErrorMessage = e.message;
         }
@@ -314,12 +312,12 @@ export function useGameState() {
     if (!firestore) {
         console.error("[saveScore] Firestore is not initialized.");
         toast({ title: "Error Saving Score", description: "Database connection error.", variant: "destructive" });
-        return;
+        return Promise.reject(new Error("Database connection error."));
     }
     if (!userId) {
         console.error("[saveScore] User ID is missing, cannot save score.");
         toast({ title: "Error Saving Score", description: "User not authenticated.", variant: "destructive" });
-        return;
+        return Promise.reject(new Error("User not authenticated."));
     }
 
     const timeTaken = gameEndTime && gameStartTime ? gameEndTime - gameStartTime : 0;
@@ -338,11 +336,11 @@ export function useGameState() {
             if (score > existingData.score) {
                 shouldWrite = true;
                 message = `New high score of ${score.toLocaleString()} saved! Previous: ${existingData.score.toLocaleString()}.`;
-            } else if (score === existingData.score && (timeTaken < existingData.timeTakenMs || !existingData.timeTakenMs)) {
+            } else if (score === existingData.score && (timeTaken < existingData.timeTakenMs || typeof existingData.timeTakenMs !== 'number')) {
                 shouldWrite = true;
-                message = `Score of ${score.toLocaleString()} matches previous, but with a faster time! (${(timeTaken / 1000).toFixed(2)}s vs ${(existingData.timeTakenMs / 1000).toFixed(2)}s).`;
+                message = `Score of ${score.toLocaleString()} matches previous, but with a faster time! (${(timeTaken / 1000).toFixed(2)}s vs ${existingData.timeTakenMs ? (existingData.timeTakenMs / 1000).toFixed(2) + 's' : 'N/A'}).`;
             } else {
-                message = `Your score of ${score.toLocaleString()} (time: ${(timeTaken / 1000).toFixed(2)}s) did not beat your previous high score of ${existingData.score.toLocaleString()} (time: ${(existingData.timeTakenMs / 1000).toFixed(2)}s).`;
+                message = `Your score of ${score.toLocaleString()} (time: ${(timeTaken / 1000).toFixed(2)}s) did not beat your previous high score of ${existingData.score.toLocaleString()} (time: ${existingData.timeTakenMs ? (existingData.timeTakenMs / 1000).toFixed(2) + 's' : 'N/A'}).`;
             }
         } else {
             shouldWrite = true;
@@ -379,8 +377,10 @@ export function useGameState() {
             description: `Could not save your score. Error: ${error.message || 'Unknown error'}`,
             variant: "destructive",
         });
+        return Promise.reject(error); // Propagate the error for GameOverDialog
     }
-  }, [score, gameStartTime, gameEndTime, toast]);
+    return Promise.resolve();
+  }, [score, gameStartTime, gameEndTime, toast]); // Removed user from dependencies
 
   return {
     questions,

@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react"; // Added useCallback
 import { useGameState } from "@/hooks/use-game-state";
 import { useTimer } from "@/hooks/use-timer";
 import { QuestionDisplay } from "./QuestionDisplay";
@@ -83,6 +83,15 @@ export function GameArea({ gameMode, gameCategory }: GameAreaProps) {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameStatus, startGame, gameMode, gameCategory]);
+
+  const handleConfirmQuit = useCallback(() => {
+    router.push('/');
+    setIsQuitConfirmOpen(false); // Close dialog after navigation
+  }, [router]);
+
+  const handleCloseGameOverRedirect = useCallback(() => {
+    router.push('/');
+  }, [router]);
 
 
   if (gameStatus === "idle" || gameStatus === "loading_questions") { 
@@ -176,7 +185,6 @@ export function GameArea({ gameMode, gameCategory }: GameAreaProps) {
               variant="outline" 
               className="w-full border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive-foreground"
               disabled={gameStatus === "loading_questions" || gameStatus === "error_loading_questions"}
-              onClick={() => setIsQuitConfirmOpen(true)}
             >
               <LogOut className="mr-2 h-5 w-5" /> Quit Game
             </Button>
@@ -189,8 +197,8 @@ export function GameArea({ gameMode, gameCategory }: GameAreaProps) {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={() => router.push('/')}>
+              <AlertDialogCancel onClick={() => setIsQuitConfirmOpen(false)}>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleConfirmQuit}>
                 Confirm Quit
               </AlertDialogAction>
             </AlertDialogFooter>
@@ -205,6 +213,7 @@ export function GameArea({ gameMode, gameCategory }: GameAreaProps) {
         timeTakenMs={timeTakenMs}
         onPlayAgain={() => startGame(gameMode, gameCategory)}
         onSaveScore={saveScore}
+        onCloseRedirectHome={handleCloseGameOverRedirect} 
         gameName="Cash Me If You Can"
       />
     </div>
