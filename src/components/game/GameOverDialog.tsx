@@ -21,10 +21,10 @@ interface GameOverDialogProps {
   isOpen: boolean;
   isWinner: boolean;
   score: number;
-  timeTakenMs: number | null;
+  timeTakenMs: number | null; // For display
   onPlayAgain: () => void;
-  onSaveScore: (name: string, userId: string) => Promise<void>;
-  onCloseRedirectHome: () => void; // New prop
+  onSaveScore: (name: string, userId: string) => Promise<void>; // No longer takes timeTakenMs
+  onCloseRedirectHome: () => void; 
   gameName?: string;
 }
 
@@ -32,7 +32,7 @@ export function GameOverDialog({
   isOpen, 
   isWinner,
   score, 
-  timeTakenMs,
+  timeTakenMs, // Used for display
   onPlayAgain, 
   onSaveScore, 
   onCloseRedirectHome,
@@ -41,7 +41,7 @@ export function GameOverDialog({
   const [isSaving, setIsSaving] = useState(false);
   const router = useRouter();
   const { user } = useAuth();
-  const { toast } = useToast();
+  const { toast } = useToast(); // Initialize toast
 
   useEffect(() => {
     if (isOpen) {
@@ -50,7 +50,8 @@ export function GameOverDialog({
   }, [isOpen]);
 
   const formatTime = (ms: number | null) => {
-    if (ms === null || ms <= 0) return "N/A"; // Handle ms=0 as N/A as well
+    if (ms === null || ms < 0) return "N/A"; // Handle null or negative as N/A
+    if (ms === 0) return "00:00";
     const totalSeconds = Math.floor(ms / 1000);
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
@@ -67,13 +68,12 @@ export function GameOverDialog({
     
     setIsSaving(true);
     try {
-      await onSaveScore(nameToSave, user.uid);
+      // timeTakenMs is no longer passed here; saveScore calculates it
+      await onSaveScore(nameToSave, user.uid); 
       router.push("/leaderboard");
     } catch (error: any) {
       console.error("Error during onSaveScore or navigation:", error);
-      // Toast for onSaveScore failure is handled within useGameState,
-      // but we can add a generic one here if navigation itself fails, though unlikely.
-      // Or rely on the toast from useGameState's saveScore.
+      // Toast for onSaveScore failure is handled within useGameState's saveScore.
     } finally {
       setIsSaving(false);
     }
@@ -92,7 +92,7 @@ export function GameOverDialog({
     <Dialog 
       open={isOpen} 
       onOpenChange={(openState) => {
-        if (!openState) { // If dialog is trying to close (e.g. X button, Escape key)
+        if (!openState) { 
           onCloseRedirectHome();
         }
       }}
@@ -105,7 +105,7 @@ export function GameOverDialog({
           <div className="flex justify-center items-center space-x-2 mb-4">
             {isWinner ? (
               <>
-                <Sparkles className="h-7 w-7 sm:h-8 sm:w-8 text-yellow-300 animate-ping opacity-75" style={{animationDelay: '0s'}} />
+                <Sparkles className="h-7 w-7 sm:h-8 sm:h-8 text-yellow-300 animate-ping opacity-75" style={{animationDelay: '0s'}} />
                 <Crown className="h-10 w-10 sm:h-12 sm:w-12 text-yellow-400 animate-bounce" style={{animationDelay: '0.1s'}}/>
                 <Trophy className="h-12 w-12 sm:h-14 sm:w-14 text-yellow-500 animate-pulse" />
                 <PartyPopper className="h-10 w-10 sm:h-12 sm:w-12 text-pink-400 animate-bounce" style={{animationDelay: '0.2s'}}/>
