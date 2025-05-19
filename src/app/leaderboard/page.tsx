@@ -13,7 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trophy, Medal, Clock } from "lucide-react";
+import { Trophy, Medal, Clock, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -22,8 +22,9 @@ import { collection, query, orderBy, limit, getDocs, Timestamp } from "firebase/
 import { CreativeLoader } from "@/components/ui/creative-loader";
 
 // Helper function to format milliseconds into MM:SS
-const formatTimeTaken = (ms: number | undefined): string => {
-  if (typeof ms !== 'number' || ms <= 0) return "N/A";
+const formatTimeTaken = (ms: number | undefined | null): string => {
+  if (ms === undefined || ms === null || typeof ms !== 'number' || ms < 0) return "N/A";
+  if (ms === 0) return "00:00"; // Display 00:00 if time taken is exactly 0ms
   const totalSeconds = Math.floor(ms / 1000);
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
@@ -50,28 +51,31 @@ export default function LeaderboardPage() {
         const scoresCollection = collection(firestore, "leaderboard_scores");
         // IMPORTANT: This query requires a composite index in Firestore.
         // Collection: leaderboard_scores
-        // Fields: 
+        // Fields:
         // 1. score (Descending)
         // 2. timeTakenMs (Ascending)
         // 3. timestamp (Ascending)
         // Firebase Console will usually provide a link to create this index if it's missing.
         const q = query(
-          scoresCollection, 
-          orderBy("score", "desc"), 
-          orderBy("timeTakenMs", "asc"), 
-          orderBy("timestamp", "asc"), 
+          scoresCollection,
+          orderBy("score", "desc"),
+          orderBy("timeTakenMs", "asc"),
+          orderBy("timestamp", "asc"),
           limit(10)
         );
-        
+
         const querySnapshot = await getDocs(q);
         const fetchedScores: ScoreEntry[] = [];
         querySnapshot.forEach((doc) => {
           const data = doc.data() as FirestoreScoreEntry;
+          console.log('[LeaderboardPage] Fetched doc ID:', doc.id, 'Raw data.timeTakenMs:', data.timeTakenMs, 'Full data:', data); // Log raw timeTakenMs
+
           let dateStr = "N/A";
           if (data.timestamp && data.timestamp instanceof Timestamp) {
              dateStr = data.timestamp.toDate().toLocaleDateString();
           } else if (data.timestamp) {
             try {
+              // Attempt to handle cases where timestamp might be a plain object after SSR/serialization
               const jsDate = new Date((data.timestamp as any).seconds * 1000 + (data.timestamp as any).nanoseconds / 1000000);
               dateStr = jsDate.toLocaleDateString();
             } catch (dateError) {
@@ -85,7 +89,7 @@ export default function LeaderboardPage() {
             score: data.score || 0,
             date: dateStr,
             timestampMillis: data.timestamp instanceof Timestamp ? data.timestamp.toMillis() : (data.timestamp ? ((data.timestamp as any).seconds * 1000) : undefined),
-            timeTakenMs: data.timeTakenMs,
+            timeTakenMs: data.timeTakenMs, // Assign directly
           });
         });
         console.log("[LeaderboardPage] Successfully fetched and processed scores:", fetchedScores.length, "entries.");
@@ -93,7 +97,7 @@ export default function LeaderboardPage() {
       } catch (e: any) {
         console.error("[LeaderboardPage] Failed to fetch scores from Firestore:", e);
         if (e.code === 'failed-precondition' && e.message.includes('requires an index')) {
-          setError(`Database query failed: This query needs a new composite index in Firestore for 'score' (DESC), 'timeTakenMs' (ASC), and 'timestamp' (ASC). Please check your Firebase console for 'leaderboard_scores' collection. The error console might provide a direct link to create it. Error: ${e.message}`);
+          setError(`Database query failed: This leaderboard query needs a new composite index in Firestore for 'leaderboard_scores' collection on fields: 'score' (DESC), 'timeTakenMs' (ASC), and 'timestamp' (ASC). Please create this index in your Firebase console. The error console might provide a direct link. Full Error: ${e.message}`);
         } else {
           setError(`Could not load high scores. Please try again later. Error: ${e.message || e.toString()}`);
         }
@@ -117,7 +121,7 @@ export default function LeaderboardPage() {
   if (error) {
     return (
       <div className="flex flex-col justify-center items-center min-h-[calc(100vh-12rem)] p-4 text-center">
-        <Trophy className="h-12 w-12 sm:h-16 sm:w-16 text-destructive mb-4" />
+        <AlertTriangle className="h-12 w-12 sm:h-16 sm:w-16 text-destructive mb-4" />
         <p className="text-xl sm:text-2xl text-destructive-foreground font-semibold">Error Loading Leaderboard</p>
         <p className="text-muted-foreground mt-2 mb-6 max-w-lg whitespace-pre-wrap">{error}</p>
         <Button onClick={() => window.location.reload()} className="bg-primary hover:bg-primary/90">
@@ -146,10 +150,10 @@ export default function LeaderboardPage() {
                 No scores recorded yet. Be the first to make history!
               </p>
               <div data-ai-hint="empty stage spotlight" className="flex justify-center mb-6">
-                <img 
-                    src="https://placehold.co/300x200.png" 
-                    alt="Empty leaderboard stage" 
-                    className="mx-auto rounded-lg shadow-md border border-border max-w-[300px] w-full" 
+                <img
+                    src="https://placehold.co/300x200.png"
+                    alt="Empty leaderboard stage"
+                    className="mx-auto rounded-lg shadow-md border border-border max-w-[300px] w-full"
                 />
               </div>
               <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground text-base sm:text-lg">
@@ -170,13 +174,13 @@ export default function LeaderboardPage() {
               </TableHeader>
               <TableBody>
                 {scores.map((entry, index) => (
-                  <TableRow 
-                    key={entry.id} 
+                  <TableRow
+                    key={entry.id}
                     className={cn(
                         "hover:bg-primary/10 border-b-border/50",
-                        index === 0 && "bg-accent/10 hover:bg-accent/20", 
-                        index === 1 && "bg-primary/15 hover:bg-primary/25", 
-                        index === 2 && "bg-secondary/10 hover:bg-secondary/20" 
+                        index === 0 && "bg-accent/10 hover:bg-accent/20",
+                        index === 1 && "bg-primary/15 hover:bg-primary/25",
+                        index === 2 && "bg-secondary/10 hover:bg-secondary/20"
                     )}
                   >
                     <TableCell className="font-medium text-center text-base sm:text-lg">
@@ -188,7 +192,7 @@ export default function LeaderboardPage() {
                     </TableCell>
                     <TableCell className="text-right text-muted-foreground text-xs sm:text-sm hidden sm:table-cell">
                       <div className="flex items-center justify-end">
-                        <Clock className="h-3.5 w-3.5 mr-1 opacity-70"/> 
+                        <Clock className="h-3.5 w-3.5 mr-1 opacity-70"/>
                         {formatTimeTaken(entry.timeTakenMs)}
                       </div>
                     </TableCell>

@@ -48,25 +48,39 @@ export function useGameState() {
   const goToNextQuestion = useCallback(() => {
     setSelectedAnswer(null);
     setIsAnswerRevealed(false);
-    setAudiencePollResults(null);
-    
+    setAudiencePollResults(null); // Reset poll results for next question
+
     if (currentQuestionIndex < questions.length - 1) {
-      const nextQuestion = questions[currentQuestionIndex + 1];
+      const nextIndex = currentQuestionIndex + 1;
+      const nextQuestion = questions[nextIndex];
       if (nextQuestion) {
         setDisplayedAnswers(shuffleArray(nextQuestion.answers));
       }
-      setCurrentQuestionIndex((prevIndex) => prevIndex + 1);
+      setCurrentQuestionIndex(nextIndex);
       setGameStatus("playing");
     } else {
-      // This case is handled by game_won status in handleSelectAnswer
+      // This case should be handled by game_won status in handleSelectAnswer
+      // If it's reached here, it means last question was answered correctly but game_won wasn't set,
+      // which implies a logic flaw or an unexpected state.
+      // For safety, setting to game_won if all questions are exhausted.
+      setGameEndTime(Date.now());
+      setGameStatus("game_won");
+       toast({
+          title: "✨ YOU'VE CONQUERED THE GAME! ✨",
+          description: `Absolutely brilliant! You've answered all ${questions.length} questions correctly! Your final score: ${score.toLocaleString()} points.`,
+          variant: "default",
+          duration: 10000,
+        });
     }
-  }, [currentQuestionIndex, questions]);
+  }, [currentQuestionIndex, questions, score, toast]);
+
 
   const handleSelectAnswer = useCallback((answer: AnswerType) => {
     if (isAnswerRevealed || (gameStatus !== "playing" && gameStatus !== "answered")) return;
+
     setSelectedAnswer(answer);
     setIsAnswerRevealed(true);
-    setGameStatus("answered"); 
+    setGameStatus("answered");
 
     let newScore = score;
     if (answer.isCorrect) {
@@ -75,7 +89,7 @@ export function useGameState() {
       toast({
         title: "Correct!",
         description: `You won ${(currentQuestion?.points || 0).toLocaleString()} points.`,
-        variant: "default", 
+        variant: "default",
         duration: 2000,
       });
 
@@ -85,10 +99,10 @@ export function useGameState() {
         toast({
           title: "✨ YOU'VE CONQUERED THE GAME! ✨",
           description: `Absolutely brilliant! You've answered all ${questions.length} questions correctly! Your final score: ${newScore.toLocaleString()} points.`,
-          variant: "default", 
-          duration: 10000, 
+          variant: "default",
+          duration: 10000,
         });
-        return; 
+        return;
       }
     } else {
       setGameEndTime(Date.now());
@@ -103,16 +117,17 @@ export function useGameState() {
     setTimeout(() => {
       if (!answer.isCorrect) {
         setGameStatus("game_over");
-      } else if (gameStatus !== "game_won") { // Ensure we don't try to go to next question if game is already won
+      } else if (gameStatus !== "game_won") {
         goToNextQuestion();
       }
     }, answer.isCorrect ? 2500 : 4000);
 
   }, [isAnswerRevealed, gameStatus, currentQuestion, score, toast, goToNextQuestion, currentQuestionIndex, questions.length]);
 
+
   const loadQuestions = useCallback(async (mode?: string, category?: string) => {
     setGameStatus("loading_questions");
-    setQuestions([]); 
+    setQuestions([]);
     setDisplayedAnswers([]);
     try {
       const input: GenerateTriviaQuestionsInput = {
@@ -123,26 +138,24 @@ export function useGameState() {
         variationHint: Math.random().toString(36).slice(2, 12),
       };
       console.log('[useGameState] Generating questions with input:', JSON.stringify(input, null, 2));
-      
+
       const aiResult = await generateTriviaQuestions(input);
 
-      // AIResult structure is { questions: Question[] } where Question already excludes points
       if (!aiResult || !aiResult.questions || aiResult.questions.length === 0) {
         throw new Error("AI failed to return any valid questions.");
       }
-      
-      // Assign points based on POINTS_LADDER
+
       const questionsWithPoints = aiResult.questions.map((q, index) => ({
         ...q,
         points: POINTS_LADDER[index] || POINTS_LADDER[POINTS_LADDER.length - 1],
-        // ID is already handled in the flow if it's missing from AI
       }));
 
       setQuestions(questionsWithPoints);
       if (questionsWithPoints.length > 0) {
+        setDisplayedAnswers(shuffleArray(questionsWithPoints[0].answers));
         setGameStatus("playing");
         setGameStartTime(Date.now());
-        setGameEndTime(null);
+        setGameEndTime(null); // Reset game end time for the new game
         if (questionsWithPoints.length < TOTAL_QUESTIONS_IN_GAME) {
           toast({
             title: "Fewer Questions Loaded",
@@ -157,13 +170,15 @@ export function useGameState() {
     } catch (e: any) {
       console.error("[useGameState] Failed to generate/load trivia questions:", e);
       let displayErrorMessage = "Could not generate new trivia questions. Please try again.";
-       if (e && e.message) {
+      if (e && e.message) {
         if (e.message.includes('An error occurred in the Server Components render') || e.message.includes('digest property is included on this error instance') || e.message.includes('A server error occurred during AI question generation')) {
           displayErrorMessage = "The AI failed to generate questions due to a server error. Please check server logs for details and try again.";
         } else if (e.message.includes('AI returned malformed data') || e.message.includes('AI prompt execution failed to produce a structured output') || e.message.includes('AI Flow Error')) {
            displayErrorMessage = `The AI encountered an issue: ${e.message}. Please try again. If the problem persists, server logs may have more details.`;
         } else if (e.message.includes('Please pass in the API key')) {
             displayErrorMessage = "API Key for AI services is missing or invalid. Please check server configuration."
+        } else if (e.message.includes('AI-generated questions failed validation') || e.message.includes('AI failed to return any valid questions.')) {
+           displayErrorMessage = `AI Question Generation Problem: ${e.message}. This might be due to strict validation or the AI model's response. Try again.`;
         } else {
           displayErrorMessage = e.message;
         }
@@ -190,23 +205,29 @@ export function useGameState() {
     setIsFiftyFiftyUsed(false);
     setIsAudiencePollUsed(false);
     setAudiencePollResults(null);
-    setQuestions([]); 
-    setDisplayedAnswers([]); 
-    setGameStartTime(null); 
-    setGameEndTime(null); 
+    setQuestions([]);
+    setDisplayedAnswers([]);
+    setGameStartTime(null); // Ensure start time is reset
+    setGameEndTime(null);   // Ensure end time is reset
     loadQuestions(mode, category);
   }, [loadQuestions]);
 
+
   useEffect(() => {
-    if (currentQuestion) {
-        setDisplayedAnswers(shuffleArray(currentQuestion.answers));
-    } else if (gameStatus === "playing" && questions.length > 0 && !currentQuestion) {
-        console.warn("[useGameState] Game is 'playing' but currentQuestion is null. This might indicate an issue with question indexing or an empty question set post-load.");
-        setDisplayedAnswers([]);
+    if (gameStatus === "playing" && questions.length > 0 && currentQuestionIndex < questions.length) {
+        if (currentQuestion) {
+            setDisplayedAnswers(shuffleArray(currentQuestion.answers));
+        } else {
+            // This case should ideally not be reached if currentQuestionIndex is valid.
+            // Could happen if questions array becomes empty unexpectedly after game start.
+            console.warn("[useGameState] Game is 'playing' but currentQuestion is null. CurrentIndex:", currentQuestionIndex, "Questions Length:", questions.length);
+            setDisplayedAnswers([]);
+        }
     } else if (gameStatus !== "playing" && gameStatus !== "answered") {
-        setDisplayedAnswers([]);
+        // Clear displayed answers if not in active play or answer reveal phase
+        // setDisplayedAnswers([]); // Commented out: This might clear answers prematurely if game ends
     }
-  }, [currentQuestion, gameStatus, questions]);
+  }, [currentQuestion, gameStatus, questions, currentQuestionIndex]);
 
 
   const handleTimeUp = useCallback(() => {
@@ -246,7 +267,7 @@ export function useGameState() {
     if (!currentQuestion || isAudiencePollUsed) return;
 
     const results: Record<string, number> = {};
-    const optionsForPoll = [...displayedAnswers]; // Poll based on currently displayed answers
+    const optionsForPoll = [...displayedAnswers];
     const correctAnswerInFullSet = currentQuestion.answers.find(a => a.isCorrect);
 
     if (!correctAnswerInFullSet) {
@@ -256,12 +277,10 @@ export function useGameState() {
     const correctAnswerText = correctAnswerInFullSet.text;
 
     let totalPercentage = 100;
-    // Check if the correct answer is among the currently displayed options (it should be, unless 50:50 removed it, which it shouldn't)
     const isCorrectAnswerDisplayed = optionsForPoll.some(opt => opt.text === correctAnswerText);
     let correctAnswerPercentage = 0;
 
     if (isCorrectAnswerDisplayed) {
-        // Give the correct answer a higher probability
         correctAnswerPercentage = Math.floor(Math.random() * 31) + 40; // 40-70%
         results[correctAnswerText] = correctAnswerPercentage;
         totalPercentage -= correctAnswerPercentage;
@@ -270,49 +289,44 @@ export function useGameState() {
     const otherOptions = optionsForPoll.filter(opt => opt.text !== correctAnswerText);
 
     otherOptions.forEach((option, index) => {
-      if (index === otherOptions.length - 1) { // Last option gets the remainder
-        results[option.text] = Math.max(0, totalPercentage); // Ensure not negative
+      if (index === otherOptions.length - 1) {
+        results[option.text] = Math.max(0, totalPercentage);
       } else {
-        // Ensure we don't assign more than what's left, and leave at least 1 for subsequent options
-        const maxForThisOption = Math.max(0, totalPercentage - (otherOptions.length - 1 - index)); 
+        const maxForThisOption = Math.max(0, totalPercentage - (otherOptions.length - 1 - index));
         const randomPercentage = Math.floor(Math.random() * (maxForThisOption + 1));
         const assignedPercentage = Math.min(randomPercentage, totalPercentage);
         results[option.text] = assignedPercentage;
         totalPercentage -= assignedPercentage;
       }
     });
-    
-    // Ensure all displayed options have a percentage (even if 0)
+
     optionsForPoll.forEach(opt => {
         if (!(opt.text in results)) {
-            results[opt.text] = 0; // Should not happen if logic above is correct
+            results[opt.text] = 0;
         }
     });
 
-    // Final normalization pass if sum is not 100
     let currentSum = Object.values(results).reduce((acc, val) => acc + val, 0);
     if (currentSum !== 100 && optionsForPoll.length > 0) {
-        const optionToAdjust = optionsForPoll.find(opt => opt.text === correctAnswerText && isCorrectAnswerDisplayed) || optionsForPoll[0]; // Prefer adjusting correct if possible
+        const optionToAdjust = optionsForPoll.find(opt => opt.text === correctAnswerText && isCorrectAnswerDisplayed) || optionsForPoll[0];
         if (optionToAdjust && results[optionToAdjust.text] !== undefined) {
              results[optionToAdjust.text] = Math.max(0, Math.min(100, results[optionToAdjust.text] + (100 - currentSum)));
         }
     }
-    // Second pass if still not 100, just adjust the first item
     currentSum = Object.values(results).reduce((acc, val) => acc + val, 0);
     if (currentSum !== 100 && optionsForPoll.length > 0) {
         const firstKey = optionsForPoll[0].text;
-        if (results[firstKey] !== undefined) { 
+        if (results[firstKey] !== undefined) {
            results[firstKey] = Math.max(0, Math.min(100, results[firstKey] + (100 - currentSum)));
         }
     }
-
 
     setAudiencePollResults(results);
     setIsAudiencePollUsed(true);
     toast({ title: "Audience Poll Used", description: "The audience has cast their votes!"});
   }, [currentQuestion, isAudiencePollUsed, displayedAnswers, toast]);
 
-  const saveScore = useCallback(async (name: string, userId: string, timeTakenMs: number | null) => {
+  const saveScore = useCallback(async (name: string, userId: string, timeTakenMsForSave: number | null) => {
     if (!firestore) {
         console.error("[saveScore] Firestore is not initialized.");
         toast({ title: "Error Saving Score", description: "Database connection error.", variant: "destructive" });
@@ -324,7 +338,7 @@ export function useGameState() {
         return Promise.reject(new Error("User not authenticated."));
     }
 
-    const actualTimeTaken = typeof timeTakenMs === 'number' && timeTakenMs > 0 ? timeTakenMs : 0;
+    const actualTimeTaken = typeof timeTakenMsForSave === 'number' && timeTakenMsForSave > 0 ? timeTakenMsForSave : 0;
     console.log(`[saveScore] Attempting to save. User: ${name}, ID: ${userId}, Score: ${score}, TimeTakenMs: ${actualTimeTaken}`);
 
     const scoreDocRef = doc(firestore, "leaderboard_scores", userId);
@@ -333,6 +347,16 @@ export function useGameState() {
         const docSnap = await getDoc(scoreDocRef);
         let shouldWrite = false;
         let message = "";
+
+        const scoreData: Omit<FirestoreScoreEntry, 'id' | 'date' | 'timestampMillis'> & { timestamp: any } = {
+            name: name,
+            score: score,
+            userId: userId,
+            timeTakenMs: actualTimeTaken,
+            timestamp: serverTimestamp()
+        };
+        console.log('[saveScore] Data being prepared for Firestore:', JSON.stringify(scoreData, null, 2));
+
 
         if (docSnap.exists()) {
             const existingData = docSnap.data() as FirestoreScoreEntry;
@@ -344,7 +368,7 @@ export function useGameState() {
                 shouldWrite = true;
                 message = `Score of ${score.toLocaleString()} matches previous, but with a faster time! (${(actualTimeTaken / 1000).toFixed(2)}s vs ${existingData.timeTakenMs ? (existingData.timeTakenMs / 1000).toFixed(2) + 's' : 'N/A'}).`;
             } else {
-                message = `Your score of ${score.toLocaleString()} (time: ${(actualTimeTaken / 1000).toFixed(2)}s) did not beat your previous high score of ${existingData.score.toLocaleString()} (time: ${existingData.timeTakenMs ? (existingData.timeTakenMs / 1000).toFixed(2) + 's' : 'N/A'}).`;
+                 message = `Your score of ${score.toLocaleString()} (time: ${(actualTimeTaken / 1000).toFixed(2)}s) did not beat your previous high score of ${existingData.score.toLocaleString()} (time: ${existingData.timeTakenMs ? (existingData.timeTakenMs / 1000).toFixed(2) + 's' : 'N/A'}).`;
             }
         } else {
             shouldWrite = true;
@@ -353,13 +377,6 @@ export function useGameState() {
         }
 
         if (shouldWrite) {
-            const scoreData: Omit<FirestoreScoreEntry, 'id' | 'date' | 'timestampMillis'> & { timestamp: any } = { // Ensure timestamp is correctly typed for setDoc
-                name: name,
-                score: score,
-                userId: userId,
-                timeTakenMs: actualTimeTaken,
-                timestamp: serverTimestamp() 
-            };
             await setDoc(scoreDocRef, scoreData);
             console.log(`[saveScore] Firestore write successful for user ${userId}.`);
              toast({
@@ -384,7 +401,7 @@ export function useGameState() {
         return Promise.reject(error);
     }
     return Promise.resolve();
-  }, [score, toast]);
+  }, [score, toast]); // Removed user from dependency array, as userId is passed as argument
 
   return {
     questions,
