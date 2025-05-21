@@ -66,8 +66,8 @@ export function GameArea({ gameMode, gameCategory }: GameAreaProps) {
   );
 
   useEffect(() => {
-    if (gameStatus === "playing" && currentQuestion && !isAnswerRevealed) { 
-      if (!isRunning) { 
+    if (gameStatus === "playing" && currentQuestion && !isAnswerRevealed) {
+      if (!isRunning) {
         resetTimer(); // Ensure timer is reset for the new question
         startTimer();
       }
@@ -75,7 +75,7 @@ export function GameArea({ gameMode, gameCategory }: GameAreaProps) {
       stopTimer();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameStatus, currentQuestion, isAnswerRevealed]); 
+  }, [gameStatus, currentQuestion, isAnswerRevealed]);
 
   useEffect(() => {
     if (gameStatus === "idle") {
@@ -94,7 +94,7 @@ export function GameArea({ gameMode, gameCategory }: GameAreaProps) {
   }, [router]);
 
 
-  if (gameStatus === "idle" || gameStatus === "loading_questions") { 
+  if (gameStatus === "idle" || gameStatus === "loading_questions") {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)] p-4">
         <CreativeLoader text={gameStatus === "idle" ? "Initializing Game..." : "Generating fresh questions with AI..."} />
@@ -126,8 +126,8 @@ export function GameArea({ gameMode, gameCategory }: GameAreaProps) {
      </div>
    );
  }
-  
-  if (!currentQuestion && (gameStatus === "playing" || gameStatus === "answered")) { 
+
+  if (!currentQuestion && (gameStatus === "playing" || gameStatus === "answered")) {
      return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)] p-4 text-center">
         <CreativeLoader text="Loading question..." />
@@ -148,9 +148,9 @@ export function GameArea({ gameMode, gameCategory }: GameAreaProps) {
         )}
         <Card className="shadow-xl bg-card/90 backdrop-blur-sm border-primary/20 rounded-xl">
           <CardContent className="p-4 sm:p-6 space-y-3 sm:space-y-4">
-            {currentQuestion && displayedAnswers.map((answer, index) => (
+            {currentQuestion && displayedAnswers.map((answer) => (
               <AnswerOption
-                key={`${currentQuestion.id}-answer-${answer.text}-${index}`} 
+                key={`${currentQuestion.id}-answer-${answer.text}`}
                 answer={answer}
                 onClick={() => handleSelectAnswer(answer)}
                 isSelected={selectedAnswer?.text === answer.text && selectedAnswer?.isCorrect === answer.isCorrect} // Compare based on text and correctness
@@ -181,8 +181,8 @@ export function GameArea({ gameMode, gameCategory }: GameAreaProps) {
         )}
         <AlertDialog open={isQuitConfirmOpen} onOpenChange={setIsQuitConfirmOpen}>
           <AlertDialogTrigger asChild>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               className="w-full border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive-foreground"
               disabled={gameStatus === "loading_questions" || gameStatus === "error_loading_questions"}
             >
@@ -213,7 +213,7 @@ export function GameArea({ gameMode, gameCategory }: GameAreaProps) {
         timeTakenMs={timeTakenMs}
         onPlayAgain={() => startGame(gameMode, gameCategory)}
         onSaveScore={saveScore}
-        onCloseRedirectHome={handleCloseGameOverRedirect} 
+        onCloseRedirectHome={handleCloseGameOverRedirect}
         gameName="Cash Me If You Can"
       />
     </div>
