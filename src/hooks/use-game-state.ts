@@ -48,7 +48,7 @@ export function useGameState() {
   const goToNextQuestion = useCallback(() => {
     setSelectedAnswer(null);
     setIsAnswerRevealed(false);
-    setAudiencePollResults(null); // Reset poll results for next question
+    setAudiencePollResults(null); 
 
     if (currentQuestionIndex < questions.length - 1) {
       const nextIndex = currentQuestionIndex + 1;
@@ -113,7 +113,7 @@ export function useGameState() {
     setTimeout(() => {
       if (!answer.isCorrect) {
         setGameStatus("game_over");
-      } else if (gameStatus !== "game_won") { // Ensure we don't call goToNextQuestion if game_won was already set
+      } else if (gameStatus !== "game_won") { 
         goToNextQuestion();
       }
     }, answer.isCorrect ? 2500 : 4000);
@@ -123,10 +123,10 @@ export function useGameState() {
 
   const loadQuestions = useCallback(async (mode?: string, category?: string) => {
     setGameStatus("loading_questions");
-    setQuestions([]); // Clear old questions
+    setQuestions([]); 
     setDisplayedAnswers([]);
-    setGameStartTime(null); // Reset start time before new questions load
-    setGameEndTime(null);   // Reset end time for the new game
+    setGameStartTime(null); 
+    setGameEndTime(null);   
 
     try {
       const input: GenerateTriviaQuestionsInput = {
@@ -146,14 +146,16 @@ export function useGameState() {
 
       const questionsWithPoints = aiResult.questions.map((q, index) => ({
         ...q,
-        points: POINTS_LADDER[index] || POINTS_LADDER[POINTS_LADDER.length - 1], // Assign points based on ladder
+        points: POINTS_LADDER[index] || POINTS_LADDER[POINTS_LADDER.length - 1], 
       }));
 
       setQuestions(questionsWithPoints);
       if (questionsWithPoints.length > 0) {
         setDisplayedAnswers(shuffleArray(questionsWithPoints[0].answers));
         setGameStatus("playing");
-        setGameStartTime(Date.now()); // Set start time HERE, when game is ready to be played
+        const startTime = Date.now();
+        setGameStartTime(startTime);
+        console.log(`[useGameState] Game started. gameStartTime set to: ${startTime}`); 
         if (questionsWithPoints.length < TOTAL_QUESTIONS_IN_GAME) {
           toast({
             title: "Fewer Questions Loaded",
@@ -205,8 +207,8 @@ export function useGameState() {
     setAudiencePollResults(null);
     setQuestions([]);
     setDisplayedAnswers([]);
-    setGameStartTime(null); // Ensure start time is reset for a new game
-    setGameEndTime(null);   // Ensure end time is reset for a new game
+    setGameStartTime(null); 
+    setGameEndTime(null);   
     loadQuestions(mode, category);
   }, [loadQuestions]);
 
@@ -216,15 +218,17 @@ export function useGameState() {
         if (currentQuestion) {
             setDisplayedAnswers(shuffleArray(currentQuestion.answers));
         } else {
+            // This case should ideally not happen if gameStatus is 'playing' and questions array is populated.
+            // Logging for debugging if it does.
             console.warn("[useGameState] Game is 'playing' but currentQuestion is null. CurrentIndex:", currentQuestionIndex, "Questions Length:", questions.length);
-            setDisplayedAnswers([]); // Fallback, though ideally currentQuestion should exist
+            setDisplayedAnswers([]); 
         }
     }
-  }, [currentQuestion, gameStatus, questions, currentQuestionIndex]); // Removed setDisplayedAnswers from deps as it's a setter
+  }, [currentQuestion, gameStatus, questions, currentQuestionIndex]);
 
 
   const handleTimeUp = useCallback(() => {
-    if (gameStatus === "playing") { // Only act if game is actively playing
+    if (gameStatus === "playing") { 
       setGameEndTime(Date.now());
       toast({
         title: "Time's Up!",
@@ -241,19 +245,14 @@ export function useGameState() {
 
   const useFiftyFifty = useCallback(() => {
     if (!currentQuestion || isFiftyFiftyUsed || displayedAnswers.length <= 2 ) {
-      // Already used, no question, or too few answers to reduce
       return;
     }
-    // Get the original full set of answers for the current question
     const originalAnswers = currentQuestion.answers;
     const correctAnswer = originalAnswers.find(a => a.isCorrect);
-    // Filter out incorrect answers from the original set
     const incorrectAnswersFromOriginal = originalAnswers.filter(a => !a.isCorrect);
 
     if (correctAnswer && incorrectAnswersFromOriginal.length > 0) {
-      // Shuffle the incorrect answers and pick one
       const oneRandomIncorrect = shuffleArray(incorrectAnswersFromOriginal)[0];
-      // Create the new set of two answers to display
       const newDisplayedAnswers = shuffleArray([correctAnswer, oneRandomIncorrect]);
       setDisplayedAnswers(newDisplayedAnswers);
     }
@@ -265,71 +264,59 @@ export function useGameState() {
     if (!currentQuestion || isAudiencePollUsed) return;
 
     const results: Record<string, number> = {};
-    const optionsForPoll = [...displayedAnswers]; // Poll based on currently visible answers
+    const optionsForPoll = [...displayedAnswers]; 
     const correctAnswerInFullSet = currentQuestion.answers.find(a => a.isCorrect);
 
     if (!correctAnswerInFullSet) {
-        // This should not happen if questions are well-formed
         toast({ title: "Audience Poll Error", description: "Could not determine correct answer for poll.", variant: "destructive"});
         return;
     }
     const correctAnswerText = correctAnswerInFullSet.text;
 
     let totalPercentage = 100;
-    // Determine if the correct answer is currently displayed (e.g., not removed by 50:50)
     const isCorrectAnswerDisplayed = optionsForPoll.some(opt => opt.text === correctAnswerText);
     let correctAnswerPercentage = 0;
 
     if (isCorrectAnswerDisplayed) {
-        // Assign a higher chance to the correct answer
-        correctAnswerPercentage = Math.floor(Math.random() * 31) + 40; // 40-70%
+        correctAnswerPercentage = Math.floor(Math.random() * 31) + 40; 
         results[correctAnswerText] = correctAnswerPercentage;
         totalPercentage -= correctAnswerPercentage;
     }
 
-    // Distribute remaining percentage among other displayed options
     const otherOptions = optionsForPoll.filter(opt => opt.text !== correctAnswerText);
 
     otherOptions.forEach((option, index) => {
       if (index === otherOptions.length - 1) {
-        // Assign all remaining percentage to the last option
-        results[option.text] = Math.max(0, totalPercentage); // Ensure not negative
+        results[option.text] = Math.max(0, totalPercentage); 
       } else {
-        // Max percentage this option can take (leaving at least 1 for subsequent options)
         const maxForThisOption = Math.max(0, totalPercentage - (otherOptions.length - 1 - index));
         const randomPercentage = Math.floor(Math.random() * (maxForThisOption + 1));
-        const assignedPercentage = Math.min(randomPercentage, totalPercentage); // Don't exceed remaining total
+        const assignedPercentage = Math.min(randomPercentage, totalPercentage); 
         results[option.text] = assignedPercentage;
         totalPercentage -= assignedPercentage;
       }
     });
 
-    // Ensure all displayed options have a percentage (even if 0 if correct answer wasn't displayed)
     optionsForPoll.forEach(opt => {
         if (!(opt.text in results)) {
-            results[opt.text] = 0; // Default to 0 if not assigned (e.g. if correct answer was not displayed)
+            results[opt.text] = 0; 
         }
     });
 
-    // Normalize to 100% if there were rounding issues or if correct wasn't displayed and percentages are off
     let currentSum = Object.values(results).reduce((acc, val) => acc + val, 0);
     if (currentSum !== 100 && optionsForPoll.length > 0) {
-        // Adjust the correct answer's percentage or the first option's if correct isn't there
         const optionToAdjust = optionsForPoll.find(opt => opt.text === correctAnswerText && isCorrectAnswerDisplayed) || optionsForPoll[0];
         if (optionToAdjust && results[optionToAdjust.text] !== undefined) {
              results[optionToAdjust.text] = Math.max(0, Math.min(100, results[optionToAdjust.text] + (100 - currentSum)));
         }
     }
-    // Final check
     currentSum = Object.values(results).reduce((acc, val) => acc + val, 0);
     if (currentSum !== 100 && optionsForPoll.length > 0) {
-        // If still not 100, distribute remaining to first option (rare case)
         const firstKey = optionsForPoll[0].text;
         if (results[firstKey] !== undefined) {
            results[firstKey] = Math.max(0, Math.min(100, results[firstKey] + (100 - currentSum)));
         }
     }
-
 
     setAudiencePollResults(results);
     setIsAudiencePollUsed(true);
@@ -347,9 +334,10 @@ export function useGameState() {
         toast({ title: "Error Saving Score", description: "User not authenticated.", variant: "destructive" });
         return Promise.reject(new Error("User not authenticated."));
     }
-
+    
+    console.log(`[saveScore] Invoked. gameStartTime: ${gameStartTime}, gameEndTime: ${gameEndTime}`);
     const calculatedTimeTakenMs = gameEndTime && gameStartTime ? gameEndTime - gameStartTime : 0;
-    // Ensure time taken is non-negative; if null/undefined from calculation, default to 0.
+    console.log(`[saveScore] calculatedTimeTakenMs after direct calculation: ${calculatedTimeTakenMs}`);
     const actualTimeTaken = typeof calculatedTimeTakenMs === 'number' ? Math.max(0, calculatedTimeTakenMs) : 0;
 
     console.log(`[saveScore] Attempting to save. User: ${name}, ID: ${userId}, Score: ${score}, TimeTakenMs: ${actualTimeTaken}`);
@@ -414,7 +402,7 @@ export function useGameState() {
         return Promise.reject(error);
     }
     return Promise.resolve();
-  }, [score, toast, gameStartTime, gameEndTime]); // Added gameStartTime and gameEndTime to dependencies
+  }, [score, toast, gameStartTime, gameEndTime]); 
 
   return {
     questions,
