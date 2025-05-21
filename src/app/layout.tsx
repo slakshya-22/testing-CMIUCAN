@@ -11,6 +11,9 @@ import { CreativeLoader } from "@/components/ui/creative-loader";
 export const metadata: Metadata = {
   title: "Cash Me If You Can",
   description: "The ultimate trivia game experience!",
+  icons: {
+    icon: '/favicon.svg', // Using the new SVG favicon
+  },
 };
 
 export default function RootLayout({
