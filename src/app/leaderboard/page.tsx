@@ -13,7 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trophy, Medal, Clock, AlertTriangle } from "lucide-react";
+import { Trophy, Medal, AlertTriangle } from "lucide-react"; // Clock icon removed
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -21,15 +21,7 @@ import { firestore } from "@/lib/firebase/config";
 import { collection, query, orderBy, limit, getDocs, Timestamp } from "firebase/firestore";
 import { CreativeLoader } from "@/components/ui/creative-loader";
 
-// Helper function to format milliseconds into MM:SS
-const formatTimeTaken = (ms: number | undefined | null): string => {
-  if (ms === undefined || ms === null || typeof ms !== 'number' || ms < 0) return "N/A";
-  if (ms === 0) return "00:00"; // Display 00:00 if time taken is exactly 0ms
-  const totalSeconds = Math.floor(ms / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-};
+// formatTimeTaken function is removed as it's no longer used in this file.
 
 export default function LeaderboardPage() {
   const [scores, setScores] = useState<ScoreEntry[]>([]);
@@ -53,14 +45,12 @@ export default function LeaderboardPage() {
         // Collection: leaderboard_scores
         // Fields:
         // 1. score (Descending)
-        // 2. timeTakenMs (Ascending)
-        // 3. timestamp (Ascending)
+        // 2. timestamp (Ascending)
         // Firebase Console will usually provide a link to create this index if it's missing.
         const q = query(
           scoresCollection,
           orderBy("score", "desc"),
-          orderBy("timeTakenMs", "asc"),
-          orderBy("timestamp", "asc"),
+          orderBy("timestamp", "asc"), // timeTakenMs removed from query
           limit(10)
         );
 
@@ -68,14 +58,13 @@ export default function LeaderboardPage() {
         const fetchedScores: ScoreEntry[] = [];
         querySnapshot.forEach((doc) => {
           const data = doc.data() as FirestoreScoreEntry;
-          console.log('[LeaderboardPage] Fetched doc ID:', doc.id, 'Raw data.timeTakenMs:', data.timeTakenMs, 'Full data:', data); // Log raw timeTakenMs
+          console.log('[LeaderboardPage] Fetched doc ID:', doc.id, 'Full data:', data);
 
           let dateStr = "N/A";
           if (data.timestamp && data.timestamp instanceof Timestamp) {
              dateStr = data.timestamp.toDate().toLocaleDateString();
           } else if (data.timestamp) {
             try {
-              // Attempt to handle cases where timestamp might be a plain object after SSR/serialization
               const jsDate = new Date((data.timestamp as any).seconds * 1000 + (data.timestamp as any).nanoseconds / 1000000);
               dateStr = jsDate.toLocaleDateString();
             } catch (dateError) {
@@ -89,15 +78,16 @@ export default function LeaderboardPage() {
             score: data.score || 0,
             date: dateStr,
             timestampMillis: data.timestamp instanceof Timestamp ? data.timestamp.toMillis() : (data.timestamp ? ((data.timestamp as any).seconds * 1000) : undefined),
-            timeTakenMs: data.timeTakenMs, // Assign directly
+            // timeTakenMs is no longer explicitly processed for display here
           });
         });
         console.log("[LeaderboardPage] Successfully fetched and processed scores:", fetchedScores.length, "entries.");
         setScores(fetchedScores);
-      } catch (e: any) {
+      } catch (e: any)
+ {
         console.error("[LeaderboardPage] Failed to fetch scores from Firestore:", e);
         if (e.code === 'failed-precondition' && e.message.includes('requires an index')) {
-          setError(`Database query failed: This leaderboard query needs a new composite index in Firestore for 'leaderboard_scores' collection on fields: 'score' (DESC), 'timeTakenMs' (ASC), and 'timestamp' (ASC). Please create this index in your Firebase console. The error console might provide a direct link. Full Error: ${e.message}`);
+          setError(`Database query failed: This leaderboard query needs a new composite index in Firestore for 'leaderboard_scores' collection on fields: 'score' (DESC) and 'timestamp' (ASC). Please create this index in your Firebase console. The error console might provide a direct link. Full Error: ${e.message}`);
         } else {
           setError(`Could not load high scores. Please try again later. Error: ${e.message || e.toString()}`);
         }
@@ -168,7 +158,7 @@ export default function LeaderboardPage() {
                   <TableHead className="w-[60px] sm:w-[80px] text-center text-accent font-semibold text-sm sm:text-base">Rank</TableHead>
                   <TableHead className="text-accent font-semibold text-sm sm:text-base">Name</TableHead>
                   <TableHead className="text-right text-accent font-semibold text-sm sm:text-base">Score</TableHead>
-                  <TableHead className="text-right text-accent font-semibold text-sm sm:text-base hidden sm:table-cell">Time</TableHead>
+                  {/* Time column removed */}
                   <TableHead className="text-right hidden md:table-cell text-accent font-semibold text-sm sm:text-base">Date</TableHead>
                 </TableRow>
               </TableHeader>
@@ -190,12 +180,7 @@ export default function LeaderboardPage() {
                     <TableCell className="text-right font-semibold text-primary text-sm sm:text-base">
                       {entry.score.toLocaleString()}
                     </TableCell>
-                    <TableCell className="text-right text-muted-foreground text-xs sm:text-sm hidden sm:table-cell">
-                      <div className="flex items-center justify-end">
-                        <Clock className="h-3.5 w-3.5 mr-1 opacity-70"/>
-                        {formatTimeTaken(entry.timeTakenMs)}
-                      </div>
-                    </TableCell>
+                    {/* Time cell removed */}
                     <TableCell className="text-right hidden md:table-cell text-muted-foreground text-xs sm:text-sm">
                       {entry.date}
                     </TableCell>

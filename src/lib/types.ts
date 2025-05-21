@@ -36,7 +36,7 @@ export interface ScoreEntry {
   score: number;
   date: string; // Formatted date string for display
   timestampMillis?: number; // Milliseconds since epoch, for client-side sorting if needed
-  timeTakenMs?: number; // Time taken to complete the game in milliseconds
+  timeTakenMs?: number; // Optional: Time taken to complete the game in milliseconds (no longer directly used for leaderboard display)
 }
 
 export const AudiencePollResultsSchema = z.record(z.number());
